@@ -1,0 +1,42 @@
+id: v1-ch01-s01-introduction
+title: From Data to a Law
+chapter: "1 Atoms in Motion"
+section: "1-1 Introduction"
+archetype: law-fit
+summary: >
+  Generate relativistic mass data, then fit a constant-mass model versus
+  a relativistic model. The residuals show when a law is only an approximation.
+controls:
+  - id: vMax
+    label: v max (c = 1)
+    type: range
+    min: 0.01
+    max: 0.99
+    step: 0.01
+    default: 0.30
+  - id: noise
+    label: measurement noise
+    type: range
+    min: 0.0
+    max: 0.2
+    step: 0.01
+    default: 0.02
+  - id: modelType
+    label: model
+    type: select
+    options:
+      - label: m = const
+        value: 0
+      - label: m = gamma m0
+        value: 1
+    default: 0
+metrics:
+  - id: rms
+    label: RMS relative error
+  - id: max
+    label: Max relative error
+assertions:
+  - when: vMax < 0.01 and modelType == 0
+    expect: RMS relative error < 1e-3
+  - when: vMax > 0.8 and modelType == 0
+    expect: RMS relative error > 1e-2

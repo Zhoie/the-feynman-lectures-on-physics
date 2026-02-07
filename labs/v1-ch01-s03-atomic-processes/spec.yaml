@@ -1,0 +1,42 @@
+id: v1-ch01-s03-atomic-processes
+title: Evaporation, Condensation, and Dissolution
+chapter: "1 Atoms in Motion"
+section: "1-3 Atomic processes"
+archetype: phase-exchange
+summary: >
+  Particles exchange between liquid and gas with competing evaporation and
+  condensation fluxes. A salt lattice dissolves faster as temperature rises.
+controls:
+  - id: temperature
+    label: temperature
+    type: range
+    min: 0.2
+    max: 2.0
+    step: 0.05
+    default: 0.8
+  - id: humidity
+    label: humidity
+    type: range
+    min: 0.05
+    max: 0.8
+    step: 0.05
+    default: 0.3
+  - id: saltConcentration
+    label: salt concentration
+    type: range
+    min: 0.0
+    max: 0.9
+    step: 0.05
+    default: 0.2
+metrics:
+  - id: evap
+    label: Evaporation rate
+  - id: cond
+    label: Condensation rate
+  - id: salt
+    label: Ions dissolved
+assertions:
+  - when: humidity increases
+    expect: Condensation rate grows relative to evaporation
+  - when: temperature increases
+    expect: Ions dissolved increases faster

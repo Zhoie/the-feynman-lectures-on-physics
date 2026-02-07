@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { volumes } from "./data";
+import { moduleTypes } from "./interactive/types";
 
 const volumeIds = volumes.map((volume) => volume.id) as [string, ...string[]];
 const normalizeParam = (value: unknown) =>
@@ -29,6 +30,9 @@ export const volumeSearchParamsSchema = z.object({
 
 export const chapterSearchParamsSchema = z.object({
   panel: z.preprocess(normalizeParam, chapterPanelSchema.optional()),
+  experiment: z.preprocess(normalizeParam, z.string().max(64).optional()),
+  module: z.preprocess(normalizeParam, z.enum(moduleTypes).optional()),
+  preset: z.preprocess(normalizeParam, z.string().max(40).optional()),
 });
 
 export const transitionParamsSchema = z.object({

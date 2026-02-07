@@ -1,0 +1,42 @@
+id: v1-ch10-s05-relativistic-momentum
+title: Classical vs Relativistic Momentum
+chapter: "10 Conservation of Momentum"
+section: "10-5 Relativistic momentum"
+archetype: relativistic-momentum
+summary: >
+  Compare p = mv with p = gamma mv. The classical formula works at low speed
+  but underestimates momentum near light speed.
+controls:
+  - id: mass
+    label: mass
+    type: range
+    min: 0.5
+    max: 4.0
+    step: 0.1
+    default: 1.0
+  - id: vMax
+    label: v max (c = 1)
+    type: range
+    min: 0.1
+    max: 0.99
+    step: 0.01
+    default: 0.9
+  - id: vProbe
+    label: probe velocity
+    type: range
+    min: 0.01
+    max: 0.99
+    step: 0.01
+    default: 0.4
+metrics:
+  - id: pc
+    label: p classical
+  - id: pr
+    label: p relativistic
+  - id: err
+    label: relative error
+assertions:
+  - when: vProbe < 0.02
+    expect: relative error < 1e-3
+  - when: vProbe > 0.8
+    expect: relative error > 0.1

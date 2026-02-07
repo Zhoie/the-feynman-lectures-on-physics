@@ -1,0 +1,36 @@
+id: v1-ch10-s03-momentum-is-conserved
+title: Equal-Mass Recoil
+chapter: "10 Conservation of Momentum"
+section: "10-3 Momentum is conserved!"
+archetype: explosion
+summary: >
+  Two equal carts start at rest and recoil with opposite momentum. They bounce
+  off the walls and return to rest at the center while total momentum stays
+  near zero.
+controls:
+  - id: mass
+    label: cart mass
+    type: range
+    min: 0.5
+    max: 4.0
+    step: 0.1
+    default: 1.0
+  - id: energy
+    label: release energy
+    type: range
+    min: 0.0
+    max: 2.0
+    step: 0.05
+    default: 1.0
+metrics:
+  - id: p1
+    label: Momentum p1
+  - id: p2
+    label: Momentum p2
+  - id: momentum
+    label: Total momentum
+  - id: energy
+    label: Kinetic energy
+assertions:
+  - when: any energy release
+    expect: Total momentum remains near zero

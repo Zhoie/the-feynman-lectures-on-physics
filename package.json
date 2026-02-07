@@ -6,16 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run"
   },
   "dependencies": {
     "framer-motion": "^11.12.0",
     "next": "16.1.6",
+    "planck": "^1.4.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "vitest": "^1.6.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -1,0 +1,33 @@
+id: v1-ch10-s01-newton-s-third-law
+title: Action and Reaction
+chapter: "10 Conservation of Momentum"
+section: "10-1 Newton's Third Law"
+archetype: action-reaction
+summary: >
+  Two carts are linked by a spring. Cart 1 stays at 1 unit mass; the force
+  sensors always show equal and opposite forces.
+controls:
+  - id: mass2
+    label: cart 2 mass
+    type: range
+    min: 0.5
+    max: 4.0
+    step: 0.1
+    default: 1.5
+  - id: stretch
+    label: initial spring stretch
+    type: range
+    min: 0.05
+    max: 0.6
+    step: 0.05
+    default: 0.25
+metrics:
+  - id: f12
+    label: Force on cart 1
+  - id: f21
+    label: Force on cart 2
+  - id: forceSum
+    label: F12 + F21
+assertions:
+  - when: any time
+    expect: F12 + F21 ~ 0

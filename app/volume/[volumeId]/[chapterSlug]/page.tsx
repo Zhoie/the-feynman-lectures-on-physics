@@ -5,6 +5,7 @@ import { ChapterHero } from "@/features/lectures/ui/chapter-hero";
 import { ChapterExplorer } from "@/features/lectures/ui/chapter-explorer";
 import { ChapterNav } from "@/features/lectures/ui/chapter-nav";
 import { ChapterContentSection } from "@/features/lectures/ui/chapter-content";
+import { ChapterLabList } from "@/features/labs/ui/chapter-lab-list";
 import { ShareBar } from "@/features/lectures/ui/share-bar";
 import {
   chapterSlugSchema,
@@ -13,6 +14,7 @@ import {
 } from "@/features/lectures/schemas";
 import { getChapterNeighbors } from "@/features/lectures/lib/lectures";
 import { getChapterContent } from "@/features/lectures/content";
+import { getChapterSections } from "@/features/labs/manifest";
 
 export function generateStaticParams() {
   return volumes.flatMap((volume) =>
@@ -109,6 +111,7 @@ export default async function ChapterPage({
       ? searchResult.data.panel
       : "intuition";
   const content = getChapterContent(data.volume, data.current);
+  const sections = getChapterSections(data.volume.id, data.current.index);
 
   return (
     <main className="min-h-screen">
@@ -124,6 +127,7 @@ export default async function ChapterPage({
         chapter={data.current}
         content={content}
       />
+      <ChapterLabList sections={sections} />
       <ChapterExplorer
         volume={data.volume}
         chapter={data.current}

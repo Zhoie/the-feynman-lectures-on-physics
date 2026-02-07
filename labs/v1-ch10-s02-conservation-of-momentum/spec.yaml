@@ -1,0 +1,63 @@
+id: v1-ch10-s02-conservation-of-momentum
+title: Isolated Collisions and the Center of Mass
+chapter: "10 Conservation of Momentum"
+section: "10-2 Conservation of momentum"
+archetype: collision-com
+summary: >
+  Two carts collide on a track. In the absence of external forces, the total
+  momentum is conserved and the center of mass moves at constant speed.
+controls:
+  - id: mass1
+    label: mass 1
+    type: range
+    min: 0.5
+    max: 4.0
+    step: 0.1
+    default: 1.0
+  - id: mass2
+    label: mass 2
+    type: range
+    min: 0.5
+    max: 4.0
+    step: 0.1
+    default: 2.0
+  - id: v1
+    label: v1 initial
+    type: range
+    min: -1.2
+    max: 1.2
+    step: 0.05
+    default: 0.6
+  - id: v2
+    label: v2 initial
+    type: range
+    min: -1.2
+    max: 1.2
+    step: 0.05
+    default: -0.2
+  - id: restitution
+    label: restitution e
+    type: range
+    min: 0.0
+    max: 1.0
+    step: 0.05
+    default: 0.9
+  - id: externalForce
+    label: external force on cart 1
+    type: range
+    min: 0.0
+    max: 1.0
+    step: 0.05
+    default: 0.0
+metrics:
+  - id: momentum
+    label: Total momentum
+  - id: drift
+    label: Momentum drift
+  - id: com
+    label: Center of mass
+assertions:
+  - when: external force = 0
+    expect: Momentum drift small and COM velocity constant
+  - when: external force > 0
+    expect: Momentum changes over time
