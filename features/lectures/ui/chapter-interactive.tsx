@@ -24,6 +24,8 @@ type ChapterInteractiveContextValue = {
 const ChapterInteractiveContext =
   createContext<ChapterInteractiveContextValue | null>(null);
 
+const PARAM_VALUE_DECIMALS = 2;
+
 function useChapterInteractive() {
   const context = use(ChapterInteractiveContext);
   if (!context) {
@@ -243,7 +245,7 @@ function ExperimentControls() {
           <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-400">
             <span>{param.label}</span>
             <span>
-              {params[param.id]?.toFixed(2)}
+              {params[param.id]?.toFixed(PARAM_VALUE_DECIMALS)}
               {param.unit ? ` ${param.unit}` : ""}
             </span>
           </div>
