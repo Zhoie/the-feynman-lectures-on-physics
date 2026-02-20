@@ -1,4 +1,4 @@
-import type { ChartSpec, ChartSeries } from "../types";
+import type { ChartBandPoint, ChartSpec, ChartSeries } from "../types";
 
 const DEFAULT_COLORS = [
   "#0f172a",
@@ -40,11 +40,50 @@ function buildPath(
     .join(" ");
 }
 
+function buildBandPath(
+  points: ChartBandPoint[],
+  xMin: number,
+  xMax: number,
+  yMin: number,
+  yMax: number,
+  width: number,
+  height: number,
+  padding: number
+) {
+  if (!points.length || xMax === xMin || yMax === yMin) {
+    return "";
+  }
+  const scaleX = (value: number) =>
+    padding + ((value - xMin) / (xMax - xMin)) * (width - padding * 2);
+  const scaleY = (value: number) =>
+    height - padding - ((value - yMin) / (yMax - yMin)) * (height - padding * 2);
+
+  const upper = points
+    .map((point, index) => {
+      const x = scaleX(point.x);
+      const y = scaleY(point.yMax);
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+  const lower = [...points]
+    .reverse()
+    .map((point) => {
+      const x = scaleX(point.x);
+      const y = scaleY(point.yMin);
+      return `L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+  return `${upper} ${lower} Z`;
+}
+
 export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) {
   const padding = 24;
   const allPoints = chart.series.flatMap((series) => series.data);
-  const xValues = allPoints.map((point) => point.x);
-  const yValues = allPoints.map((point) => point.y);
+  const bandPoints = chart.bands?.flatMap((band) => band.data) ?? [];
+  const xValues = allPoints.map((point) => point.x).concat(bandPoints.map((point) => point.x));
+  const yValues = allPoints
+    .map((point) => point.y)
+    .concat(bandPoints.flatMap((point) => [point.yMin, point.yMax]));
   const xMin = chart.xRange?.[0] ?? Math.min(...xValues, 0);
   const xMax = chart.xRange?.[1] ?? Math.max(...xValues, 1);
   const yMin = chart.yRange?.[0] ?? Math.min(...yValues, 0);
@@ -84,6 +123,21 @@ export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) 
           stroke="#cbd5f5"
           strokeWidth={1}
         />
+        {chart.bands?.map((band, index) => {
+          const path = buildBandPath(
+            band.data,
+            xMin,
+            xMax,
+            yMin,
+            yMax,
+            width,
+            height,
+            padding
+          );
+          if (!path) return null;
+          const color = band.color ?? "rgba(14, 165, 233, 0.15)";
+          return <path key={band.id ?? `band-${index}`} d={path} fill={color} />;
+        })}
         {chart.series.map((series, index) => {
           const path = buildPath(
             series,
@@ -104,6 +158,7 @@ export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) 
               fill="none"
               stroke={color}
               strokeWidth={2}
+              strokeDasharray={series.lineStyle === "dashed" ? "6 4" : undefined}
               strokeLinejoin="round"
               strokeLinecap="round"
             />
@@ -144,6 +199,11 @@ export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) 
                 }}
               />
               <span>{series.label}</span>
+              {series.role ? (
+                <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                  {series.role}
+                </span>
+              ) : null}
             </div>
           ))}
         </div>

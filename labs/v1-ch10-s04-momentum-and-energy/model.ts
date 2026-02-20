@@ -1,4 +1,10 @@
 import type { ChartSpec, LabModel, MetricValue } from "@/features/labs/types";
+import {
+  decorateMetric,
+  getBenchmarkSources,
+  numericCheck,
+  statusFromChecks,
+} from "@/labs/_benchmarks";
 
 type Params = {
   mass1: number;
@@ -15,6 +21,7 @@ type State = {
   v2: number;
   time: number;
   p0: number;
+  pScale: number;
   k0: number;
   history: { t: number; kRatio: number }[];
 };
@@ -29,14 +36,24 @@ function buildState(params: Params): State {
   const v1 = params.v1;
   const v2 = params.v2;
   const p0 = params.mass1 * v1 + params.mass2 * v2;
+  const pScale = Math.max(1e-6, Math.abs(params.mass1 * v1) + Math.abs(params.mass2 * v2));
   const k0 =
     0.5 * params.mass1 * v1 * v1 + 0.5 * params.mass2 * v2 * v2;
-  return { x1, x2, v1, v2, time: 0, p0, k0, history: [] };
+  return { x1, x2, v1, v2, time: 0, p0, pScale, k0, history: [] };
 }
 
 function resolveCollision(state: State, params: Params) {
   const dx = state.x2 - state.x1;
-  if (Math.abs(dx) > 2 * RADIUS) return;
+  const overlap = 2 * RADIUS - Math.abs(dx);
+  if (overlap <= 0) return;
+  const relV = state.v2 - state.v1;
+  const closing = dx * relV < 0;
+  const sign = dx === 0 ? 1 : Math.sign(dx);
+  const shift = overlap / 2;
+  state.x1 -= sign * shift;
+  state.x2 += sign * shift;
+  if (!closing) return;
+
   const m1 = params.mass1;
   const m2 = params.mass2;
   const e = params.restitution;
@@ -48,10 +65,6 @@ function resolveCollision(state: State, params: Params) {
     ((m2 - e * m1) / (m1 + m2)) * v2 + ((1 + e) * m1) / (m1 + m2) * v1;
   state.v1 = v1p;
   state.v2 = v2p;
-  const overlap = 2 * RADIUS - Math.abs(dx);
-  const shift = overlap / 2;
-  state.x1 -= Math.sign(dx) * shift;
-  state.x2 += Math.sign(dx) * shift;
 }
 
 function stepState(state: State, params: Params, dt: number) {
@@ -85,14 +98,20 @@ function metrics(state: State, params: Params): MetricValue[] {
   const k =
     0.5 * params.mass1 * state.v1 * state.v1 +
     0.5 * params.mass2 * state.v2 * state.v2;
+  const window = state.history.slice(-20);
+  const kRatioWindow =
+    window.length > 0
+      ? window.reduce((sum, point) => sum + point.kRatio, 0) / window.length
+      : state.k0 > 0
+        ? k / state.k0
+        : 1;
   return [
-    { id: "momentum", label: "Total momentum", value: p, precision: 4 },
-    {
-      id: "kRatio",
-      label: "K / K0",
-      value: state.k0 > 0 ? k / state.k0 : 1,
-      precision: 3,
-    },
+    decorateMetric(
+      { id: "momentum", label: "Total momentum", value: p, precision: 4 },
+      state.p0,
+      Math.max(1e-3, state.pScale * 1e-2)
+    ),
+    decorateMetric({ id: "kRatio", label: "K / K0 (window)", value: kRatioWindow, precision: 4 }, 1, 0.15),
   ];
 }
 
@@ -112,6 +131,15 @@ function charts(state: State): ChartSpec[] {
             y: point.kRatio,
           })),
           color: "#0f172a",
+          role: "simulation",
+        },
+        {
+          id: "ratio-ref",
+          label: "reference 1",
+          data: state.history.map((point) => ({ x: point.t, y: 1 })),
+          color: "#94a3b8",
+          role: "reference",
+          lineStyle: "dashed",
         },
       ],
     },
@@ -124,6 +152,25 @@ export const model: LabModel<Params, State> = {
   summary:
     "Two carts collide with adjustable restitution. Momentum stays constant, while kinetic energy can drop.",
   archetype: "Momentum vs Energy",
+  simulation: {
+    fixedDt: 1 / 240,
+    maxSubSteps: 20,
+    maxFrameDt: 1 / 20,
+  },
+  meta: {
+    fidelity: "quantitative",
+    assumptions: [
+      "1D collisions with restitution e and finite cart radius.",
+      "Walls are perfectly reflective and do not dissipate energy.",
+      "Energy ratio metric uses a trailing observation window.",
+    ],
+    validRange: [
+      "mass1/mass2 in [0.5, 4.0]",
+      "v1/v2 in [-1.0, 1.0]",
+      "restitution in [0, 1]",
+    ],
+    sources: getBenchmarkSources("v1-ch10-s04-momentum-and-energy"),
+  },
   params: [
     {
       id: "mass1",
@@ -190,6 +237,29 @@ export const model: LabModel<Params, State> = {
   },
   metrics: (state, params) => metrics(state, params),
   charts: (state) => charts(state),
+  validate: (state, params) => {
+    const p = params.mass1 * state.v1 + params.mass2 * state.v2;
+    const k =
+      0.5 * params.mass1 * state.v1 * state.v1 +
+      0.5 * params.mass2 * state.v2 * state.v2;
+    const kRatio = state.k0 > 0 ? k / state.k0 : 1;
+    return statusFromChecks([
+      numericCheck(
+        "momentum",
+        "Total momentum",
+        p,
+        state.p0,
+        Math.max(1e-3, state.pScale * 1e-2)
+      ),
+      numericCheck(
+        "energy-ratio",
+        "K/K0",
+        kRatio,
+        1,
+        params.restitution >= 0.95 ? 0.04 : 0.35
+      ),
+    ]);
+  },
 };
 
 export function computeMetrics(params: Params) {

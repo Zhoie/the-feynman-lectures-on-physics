@@ -1,4 +1,10 @@
 import type { ChartSpec, LabModel, MetricValue } from "@/features/labs/types";
+import {
+  decorateMetric,
+  getBenchmarkSources,
+  numericCheck,
+  statusFromChecks,
+} from "@/labs/_benchmarks";
 
 type Params = {
   mass2: number;
@@ -63,6 +69,9 @@ function stepState(state: State, params: Params, dt: number) {
 
 function metrics(state: State): MetricValue[] {
   const forceSum = state.force12 + state.force21;
+  const driftNorm =
+    Math.abs(forceSum) /
+    Math.max(1e-9, Math.abs(state.force12) + Math.abs(state.force21));
   return [
     {
       id: "f12",
@@ -76,7 +85,21 @@ function metrics(state: State): MetricValue[] {
       value: state.force21,
       precision: 4,
     },
-    { id: "forceSum", label: "F12 + F21", value: forceSum, precision: 5 },
+    decorateMetric(
+      { id: "forceSum", label: "F12 + F21", value: forceSum, precision: 6 },
+      0,
+      1e-3
+    ),
+    decorateMetric(
+      {
+        id: "forceDriftNorm",
+        label: "|F12 + F21| / (|F12| + |F21|)",
+        value: driftNorm,
+        precision: 6,
+      },
+      0,
+      5e-4
+    ),
   ];
 }
 
@@ -93,12 +116,22 @@ function charts(state: State): ChartSpec[] {
           label: "F12",
           data: state.history.map((point) => ({ x: point.t, y: point.f12 })),
           color: "#0f172a",
+          role: "simulation",
         },
         {
           id: "f21",
           label: "F21",
           data: state.history.map((point) => ({ x: point.t, y: point.f21 })),
           color: "#0ea5e9",
+          role: "simulation",
+        },
+        {
+          id: "zero",
+          label: "reference 0",
+          data: state.history.map((point) => ({ x: point.t, y: 0 })),
+          color: "#94a3b8",
+          role: "reference",
+          lineStyle: "dashed",
         },
       ],
     },
@@ -111,6 +144,25 @@ export const model: LabModel<Params, State> = {
   summary:
     "Two carts are linked by a spring. Cart 1 stays at 1 unit mass; the force sensors always show equal and opposite forces.",
   archetype: "Action-Reaction Pair",
+  simulation: {
+    fixedDt: 1 / 240,
+    maxSubSteps: 16,
+    maxFrameDt: 1 / 20,
+  },
+  meta: {
+    fidelity: "quantitative",
+    assumptions: [
+      "Linear Hooke spring with no delay and no sensor lag.",
+      "1D motion; friction and damping are neglected.",
+    ],
+    validRange: [
+      "cart 2 mass in [0.5, 4.0]",
+      "initial spring stretch in [0.05, 0.6]",
+    ],
+    sources: getBenchmarkSources("v1-ch10-s01-newton-s-third-law"),
+    notes:
+      "Force balance is validated with absolute and normalized drift checks.",
+  },
   params: [
     {
       id: "mass2",
@@ -188,6 +240,22 @@ export const model: LabModel<Params, State> = {
   },
   metrics: (state) => metrics(state),
   charts: (state) => charts(state),
+  validate: (state) => {
+    const forceSum = state.force12 + state.force21;
+    const driftNorm =
+      Math.abs(forceSum) /
+      Math.max(1e-9, Math.abs(state.force12) + Math.abs(state.force21));
+    return statusFromChecks([
+      numericCheck("force-sum", "F12 + F21", forceSum, 0, 1e-3),
+      numericCheck(
+        "force-balance-norm",
+        "|F12 + F21| / (|F12| + |F21|)",
+        driftNorm,
+        0,
+        5e-4
+      ),
+    ]);
+  },
 };
 
 export function computeMetrics(params: Params) {

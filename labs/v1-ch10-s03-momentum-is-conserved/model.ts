@@ -1,4 +1,10 @@
 import type { ChartSpec, LabModel, MetricValue } from "@/features/labs/types";
+import {
+  decorateMetric,
+  getBenchmarkSources,
+  numericCheck,
+  statusFromChecks,
+} from "@/labs/_benchmarks";
 
 type Params = {
   mass: number;
@@ -10,77 +16,69 @@ type State = {
   x2: number;
   v1: number;
   v2: number;
-  baseV1: number;
-  baseV2: number;
-  release: number;
-  latched: boolean;
   time: number;
+  p0: number;
+  k0: number;
   history: { t: number; p1: number; p2: number; pTotal: number; k: number }[];
 };
 
 const LIMIT = 1.1;
 const CART_HALF = 0.12;
-const RELEASE_TIME = 0.3;
 const ARROW_MAX_WORLD = LIMIT * 0.5;
 
 function buildState(params: Params): State {
-  const separation = CART_HALF * 2.2;
+  const separation = CART_HALF * 2.4;
   const x1 = -separation / 2;
   const x2 = separation / 2;
   const v = params.energy > 0 ? Math.sqrt(params.energy / params.mass) : 0;
-  const release = params.energy > 0 ? 0 : 1;
+  const v1 = v;
+  const v2 = -v;
+  const p0 = params.mass * v1 + params.mass * v2;
+  const k0 = 0.5 * params.mass * (v1 * v1 + v2 * v2);
   return {
     x1,
     x2,
-    v1: v * release,
-    v2: -v * release,
-    baseV1: v,
-    baseV2: -v,
-    release,
-    latched: params.energy <= 0,
+    v1,
+    v2,
     time: 0,
+    p0,
+    k0,
     history: [],
   };
 }
 
+function resolveCollision(state: State) {
+  const dx = state.x2 - state.x1;
+  const overlap = CART_HALF * 2 - Math.abs(dx);
+  if (overlap <= 0) return;
+  const relV = state.v2 - state.v1;
+  const closing = dx * relV < 0;
+  const sign = dx === 0 ? 1 : Math.sign(dx);
+  const shift = overlap / 2;
+  state.x1 -= sign * shift;
+  state.x2 += sign * shift;
+  if (!closing) return;
+
+  // Equal masses: elastic collision swaps velocities.
+  const v1 = state.v1;
+  state.v1 = state.v2;
+  state.v2 = v1;
+}
+
 function stepState(state: State, params: Params, dt: number) {
-  if (!state.latched && state.release < 1) {
-    const nextRelease = Math.min(1, state.release + dt / RELEASE_TIME);
-    if (nextRelease !== state.release) {
-      state.release = nextRelease;
-      state.v1 = state.baseV1 * state.release;
-      state.v2 = state.baseV2 * state.release;
-    }
+  state.x1 += state.v1 * dt;
+  state.x2 += state.v2 * dt;
+
+  if (state.x1 - CART_HALF < -LIMIT) {
+    state.x1 = -LIMIT + CART_HALF;
+    state.v1 *= -1;
+  }
+  if (state.x2 + CART_HALF > LIMIT) {
+    state.x2 = LIMIT - CART_HALF;
+    state.v2 *= -1;
   }
 
-  if (!state.latched) {
-    state.x1 += state.v1 * dt;
-    state.x2 += state.v2 * dt;
-  }
-
-  if (!state.latched) {
-    if (state.x1 - CART_HALF < -LIMIT) {
-      state.x1 = -LIMIT + CART_HALF;
-      state.v1 *= -1;
-    }
-    if (state.x2 + CART_HALF > LIMIT) {
-      state.x2 = LIMIT - CART_HALF;
-      state.v2 *= -1;
-    }
-  }
-
-  if (!state.latched) {
-    const closing = state.v1 > 0 && state.v2 < 0;
-    if (state.x2 - state.x1 <= CART_HALF * 2 && closing) {
-      const com = (state.x1 + state.x2) / 2;
-      state.x1 = com - CART_HALF;
-      state.x2 = com + CART_HALF;
-      state.v1 = 0;
-      state.v2 = 0;
-      state.latched = true;
-      state.release = 1;
-    }
-  }
+  resolveCollision(state);
 
   state.time += dt;
   if (state.time - (state.history.at(-1)?.t ?? -1) > 0.05) {
@@ -101,8 +99,16 @@ function metrics(state: State, params: Params): MetricValue[] {
   return [
     { id: "p1", label: "Momentum p1", value: p1, precision: 4 },
     { id: "p2", label: "Momentum p2", value: p2, precision: 4 },
-    { id: "momentum", label: "Total momentum", value: Math.abs(pTotal), precision: 5 },
-    { id: "energy", label: "Kinetic energy", value: k, precision: 4 },
+    decorateMetric(
+      { id: "momentum", label: "Total momentum", value: Math.abs(pTotal), precision: 6 },
+      0,
+      1e-5
+    ),
+    decorateMetric(
+      { id: "energy", label: "Kinetic energy", value: k, precision: 4 },
+      state.k0,
+      Math.max(1e-3, state.k0 * 0.02)
+    ),
   ];
 }
 
@@ -119,18 +125,29 @@ function charts(state: State): ChartSpec[] {
           label: "p1",
           data: state.history.map((point) => ({ x: point.t, y: point.p1 })),
           color: "#0f172a",
+          role: "simulation",
         },
         {
           id: "p2",
           label: "p2",
           data: state.history.map((point) => ({ x: point.t, y: point.p2 })),
           color: "#f97316",
+          role: "simulation",
         },
         {
           id: "pt",
           label: "p total",
           data: state.history.map((point) => ({ x: point.t, y: point.pTotal })),
           color: "#0284c7",
+          role: "simulation",
+        },
+        {
+          id: "pt-ref",
+          label: "reference 0",
+          data: state.history.map((point) => ({ x: point.t, y: state.p0 })),
+          color: "#94a3b8",
+          role: "reference",
+          lineStyle: "dashed",
         },
       ],
     },
@@ -145,6 +162,15 @@ function charts(state: State): ChartSpec[] {
           label: "K",
           data: state.history.map((point) => ({ x: point.t, y: point.k })),
           color: "#0284c7",
+          role: "simulation",
+        },
+        {
+          id: "k-ref",
+          label: "K reference",
+          data: state.history.map((point) => ({ x: point.t, y: state.k0 })),
+          color: "#94a3b8",
+          role: "reference",
+          lineStyle: "dashed",
         },
       ],
     },
@@ -155,8 +181,25 @@ export const model: LabModel<Params, State> = {
   id: "v1-ch10-s03-momentum-is-conserved",
   title: "Equal-Mass Recoil",
   summary:
-    "Two equal carts start at rest, then recoil with opposite momentum. They bounce off the walls and return to rest at the center.",
+    "Two equal carts recoil with opposite momentum. With elastic walls and equal masses, total momentum stays near zero and kinetic energy stays bounded.",
   archetype: "Explosion",
+  simulation: {
+    fixedDt: 1 / 240,
+    maxSubSteps: 20,
+    maxFrameDt: 1 / 20,
+  },
+  meta: {
+    fidelity: "quantitative",
+    assumptions: [
+      "Two equal masses in 1D with elastic wall reflections.",
+      "No drag or rolling friction losses.",
+      "Cart-cart collision is modeled as perfectly elastic for equal masses.",
+    ],
+    validRange: ["cart mass in [0.5, 4.0]", "release energy in [0, 2.0]"],
+    sources: getBenchmarkSources("v1-ch10-s03-momentum-is-conserved"),
+    notes:
+      "This model removes the non-physical stick-and-stop behavior and keeps recoil dynamics conservative.",
+  },
   params: [
     {
       id: "mass",
@@ -288,17 +331,28 @@ export const model: LabModel<Params, State> = {
   },
   metrics: (state, params) => metrics(state, params),
   charts: (state) => charts(state),
+  validate: (state, params) => {
+    const pTotal = params.mass * state.v1 + params.mass * state.v2;
+    const k = 0.5 * params.mass * (state.v1 * state.v1 + state.v2 * state.v2);
+    return statusFromChecks([
+      numericCheck("momentum-total", "|p_total|", Math.abs(pTotal), 0, 1e-5),
+      numericCheck("energy-conservation", "Kinetic energy", k, state.k0, Math.max(1e-3, state.k0 * 0.02)),
+    ]);
+  },
 };
 
 export function computeMetrics(params: Params) {
   const state = buildState(params);
-  const v = params.energy > 0 ? Math.sqrt(params.energy / params.mass) : 0;
+  if (params.energy <= 0) {
+    return metrics(state, params);
+  }
+  const v = Math.sqrt(params.energy / params.mass);
   const distance = LIMIT - CART_HALF - Math.abs(state.x1);
   const timeToWall = v > 0 ? distance / v : 1;
-  const duration = Math.min(RELEASE_TIME + 0.1, timeToWall * 0.8);
-  const steps = Math.max(1, Math.floor(duration / 0.02));
+  const duration = Math.max(0.2, Math.min(0.45, timeToWall * 0.8));
+  const steps = Math.max(1, Math.floor(duration / 0.005));
   for (let i = 0; i < steps; i += 1) {
-    stepState(state, params, 0.02);
+    stepState(state, params, 0.005);
   }
   return metrics(state, params);
 }

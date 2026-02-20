@@ -48,7 +48,8 @@ function validateChapterExperiments() {
   const idSet = new Set<string>();
 
   volumes.forEach((volume) => {
-    const volumeSet = volumeExperiments[volume.id];
+    const volumeSet =
+      volumeExperiments[volume.id as keyof typeof volumeExperiments];
     if (!volumeSet) {
       throw new Error(`Missing experiments for ${volume.id}.`);
     }
@@ -94,8 +95,9 @@ export function getChapterExperiments(
     validated = true;
   }
 
-  const volumeSet = volumeExperiments[volume.id];
-  const chapterSet = volumeSet?.[chapter.index - 1];
+  const typedVolumeSet =
+    volumeExperiments[volume.id as keyof typeof volumeExperiments];
+  const chapterSet = typedVolumeSet?.[chapter.index - 1];
 
   if (!chapterSet) {
     throw new Error(

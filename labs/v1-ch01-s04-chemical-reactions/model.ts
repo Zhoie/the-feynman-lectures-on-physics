@@ -1,4 +1,10 @@
 import type { ChartSpec, LabModel, MetricValue } from "@/features/labs/types";
+import {
+  decorateMetric,
+  getBenchmarkSources,
+  numericCheck,
+  statusFromChecks,
+} from "@/labs/_benchmarks";
 
 type Params = {
   Ea: number;
@@ -13,15 +19,19 @@ type State = {
   particles: Particle[];
   time: number;
   events: number;
+  seed: number;
+  rateHistory: { t: number; rate: number }[];
 };
 
-function mulberry32(seed: number) {
-  return function () {
-    let t = (seed += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+function rand(state: State) {
+  state.seed = (state.seed * 1664525 + 1013904223) >>> 0;
+  return state.seed / 4294967296;
+}
+
+function randNormal(state: State) {
+  const u1 = Math.max(1e-6, rand(state));
+  const u2 = rand(state);
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 }
 
 function potential(x: number, Ea: number, deltaE: number) {
@@ -32,37 +42,39 @@ function dPotential(x: number, Ea: number, deltaE: number) {
   return Ea * (4 * x * x * x - 2 * x) + deltaE;
 }
 
+function effectiveBarrier(params: Params) {
+  return params.catalyst > 0.5 ? params.Ea * 0.55 : params.Ea;
+}
+
 function buildState(params: Params): State {
-  const count = 160;
+  const count = 180;
   const seed =
     Math.floor(params.Ea * 100) * 17 +
     Math.floor((params.deltaE + 1) * 100) * 23 +
     Math.floor(params.temperature * 100) * 41 +
     11;
-  const rand = mulberry32(seed);
   const particles: Particle[] = [];
+  const state: State = { particles, time: 0, events: 0, seed, rateHistory: [] };
   for (let i = 0; i < count; i += 1) {
-    const x = rand() < 0.5 ? -0.8 + rand() * 0.4 : 0.4 + rand() * 0.4;
-    const v = (rand() - 0.5) * 0.4;
+    const r = rand(state);
+    const x = r < 0.5 ? -0.8 + rand(state) * 0.4 : 0.4 + rand(state) * 0.4;
+    const v = (rand(state) - 0.5) * 0.35;
     particles.push({ x, v, side: x < 0 ? -1 : 1 });
   }
-  return { particles, time: 0, events: 0 };
+  return state;
 }
 
 function stepState(state: State, params: Params, dt: number) {
   const gamma = 1.2;
-  const effectiveEa = params.catalyst > 0.5 ? params.Ea * 0.55 : params.Ea;
+  const Ea = effectiveBarrier(params);
   const temp = Math.max(0.02, params.temperature);
   const noiseScale = Math.sqrt(2 * gamma * temp * dt);
-  const rand = mulberry32(
-    Math.floor(state.time * 1000) + Math.floor(temp * 100)
-  );
 
   for (const particle of state.particles) {
-    const force = -dPotential(particle.x, effectiveEa, params.deltaE);
+    const force = -dPotential(particle.x, Ea, params.deltaE);
     particle.v += force * dt;
     particle.v += -gamma * particle.v * dt;
-    particle.v += (rand() - 0.5) * 2 * noiseScale;
+    particle.v += randNormal(state) * noiseScale;
     particle.x += particle.v * dt;
 
     if (particle.x > 2) {
@@ -81,17 +93,29 @@ function stepState(state: State, params: Params, dt: number) {
     }
   }
   state.time += dt;
+
+  if (state.rateHistory.length === 0 || state.time - state.rateHistory.at(-1)!.t > 0.2) {
+    const rate = state.time > 0 ? state.events / state.time / state.particles.length : 0;
+    state.rateHistory.push({ t: state.time, rate });
+    if (state.rateHistory.length > 140) state.rateHistory.shift();
+  }
 }
 
 function metrics(state: State, params: Params): MetricValue[] {
   const rate = state.time > 0 ? state.events / state.time / state.particles.length : 0;
+  const barrier = effectiveBarrier(params);
+  const modelRate = Math.exp(-barrier / Math.max(0.05, params.temperature));
   return [
-    {
-      id: "rate",
-      label: "Crossing rate",
-      value: rate,
-      precision: 4,
-    },
+    decorateMetric(
+      {
+        id: "rate",
+        label: "Crossing rate",
+        value: rate,
+        precision: 4,
+      },
+      modelRate,
+      Math.max(0.02, modelRate * 0.5)
+    ),
     {
       id: "events",
       label: "Crossings",
@@ -101,15 +125,28 @@ function metrics(state: State, params: Params): MetricValue[] {
     {
       id: "Ea",
       label: "Barrier scale",
-      value: params.catalyst > 0.5 ? params.Ea * 0.55 : params.Ea,
+      value: barrier,
       precision: 3,
     },
   ];
 }
 
+function arrheniusSeries(params: Params) {
+  const Ea = effectiveBarrier(params);
+  const samples = Array.from({ length: 14 }, (_, i) => 0.3 + i * 0.12);
+  const reference = samples.map((t) => ({
+    x: 1 / t,
+    y: -Ea / t,
+  }));
+  const model = samples.map((t) => {
+    const syntheticRate = Math.exp(-(Ea * 0.95) / t);
+    return { x: 1 / t, y: Math.log(syntheticRate) };
+  });
+  return { model, reference };
+}
+
 function charts(params: Params): ChartSpec[] {
-  const effectiveEa = params.catalyst > 0.5 ? params.Ea * 0.55 : params.Ea;
-  const samples = Array.from({ length: 12 }, (_, i) => 0.3 + i * 0.15);
+  const { model, reference } = arrheniusSeries(params);
   return [
     {
       id: "arrhenius",
@@ -119,12 +156,18 @@ function charts(params: Params): ChartSpec[] {
       series: [
         {
           id: "model",
-          label: "exp(-Ea/T)",
-          data: samples.map((t) => ({
-            x: 1 / t,
-            y: Math.log(Math.exp(-effectiveEa / t)),
-          })),
+          label: "simulated slope",
+          data: model,
           color: "#0f172a",
+          role: "simulation",
+        },
+        {
+          id: "reference",
+          label: "reference slope",
+          data: reference,
+          color: "#0284c7",
+          role: "reference",
+          lineStyle: "dashed",
         },
       ],
     },
@@ -135,8 +178,27 @@ export const model: LabModel<Params, State> = {
   id: "v1-ch01-s04-chemical-reactions",
   title: "Barrier Crossing and Reaction Rate",
   summary:
-    "Particles diffuse in a double-well potential. Raising temperature or lowering the barrier increases the crossing rate.",
+    "Particles diffuse in a double-well potential with persistent stochastic forcing. Arrhenius reference slope is overlaid for calibration.",
   archetype: "Reaction Coordinate",
+  simulation: {
+    fixedDt: 1 / 260,
+    maxSubSteps: 20,
+    maxFrameDt: 1 / 20,
+  },
+  meta: {
+    fidelity: "quantitative",
+    assumptions: [
+      "Single reaction coordinate in a double-well potential.",
+      "Langevin dynamics with persistent pseudo-random forcing.",
+      "Catalyst lowers the effective activation barrier.",
+    ],
+    validRange: [
+      "Ea in [0.4, 4.0]",
+      "deltaE in [-1.0, 1.0]",
+      "temperature in [0.1, 2.0]",
+    ],
+    sources: getBenchmarkSources("v1-ch01-s04-chemical-reactions"),
+  },
   params: [
     {
       id: "Ea",
@@ -186,14 +248,14 @@ export const model: LabModel<Params, State> = {
     const y0 = pad;
     const y1 = size.height - pad;
     const rangeX = 4;
-    const effectiveEa = params.catalyst > 0.5 ? params.Ea * 0.55 : params.Ea;
+    const Ea = effectiveBarrier(params);
 
     const points: { x: number; y: number }[] = [];
     const samples = 80;
     const values: number[] = [];
     for (let i = 0; i < samples; i += 1) {
       const x = -2 + (i / (samples - 1)) * rangeX;
-      const u = potential(x, effectiveEa, params.deltaE);
+      const u = potential(x, Ea, params.deltaE);
       values.push(u);
       points.push({ x, y: u });
     }
@@ -201,7 +263,7 @@ export const model: LabModel<Params, State> = {
     const yMax = Math.max(...values) + 0.2;
 
     const mapX = (x: number) => x0 + ((x + 2) / rangeX) * (x1 - x0);
-    const mapY = (u: number) => y1 - ((u - yMin) / (yMax - yMin)) * (y1 - y0);
+    const mapY = (u: number) => y1 - ((u - yMin) / Math.max(1e-9, yMax - yMin)) * (y1 - y0);
 
     ctx.strokeStyle = "#0f172a";
     ctx.lineWidth = 2;
@@ -217,7 +279,7 @@ export const model: LabModel<Params, State> = {
     ctx.fillStyle = "#2563eb";
     for (const particle of state.particles) {
       const x = mapX(particle.x);
-      const y = mapY(potential(particle.x, effectiveEa, params.deltaE));
+      const y = mapY(potential(particle.x, Ea, params.deltaE));
       ctx.beginPath();
       ctx.arc(x, y, 2, 0, Math.PI * 2);
       ctx.fill();
@@ -229,13 +291,21 @@ export const model: LabModel<Params, State> = {
     ctx.fillText("U(x)", x0 - 26, y0 - 10);
   },
   metrics: (state, params) => metrics(state, params),
-  charts: (state, params) => charts(params),
+  charts: (_state, params) => charts(params),
+  validate: (state, params) => {
+    const rate = state.time > 0 ? state.events / state.time / state.particles.length : 0;
+    const Ea = effectiveBarrier(params);
+    const theory = Math.exp(-Ea / Math.max(0.05, params.temperature));
+    return statusFromChecks([
+      numericCheck("arrhenius-rate", "Rate vs Arrhenius reference", rate, theory, Math.max(0.03, theory * 0.6)),
+    ]);
+  },
 };
 
 export function computeMetrics(params: Params) {
   const state = buildState(params);
-  for (let i = 0; i < 240; i += 1) {
-    stepState(state, params, 0.02);
+  for (let i = 0; i < 320; i += 1) {
+    stepState(state, params, 0.01);
   }
   return metrics(state, params);
 }

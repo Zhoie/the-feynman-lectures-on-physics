@@ -1,4 +1,10 @@
 import type { ChartSpec, LabModel, MetricValue } from "@/features/labs/types";
+import {
+  decorateMetric,
+  getBenchmarkSources,
+  numericCheck,
+  statusFromChecks,
+} from "@/labs/_benchmarks";
 
 type Params = {
   mass1: number;
@@ -16,6 +22,7 @@ type State = {
   v2: number;
   time: number;
   p0: number;
+  pScale: number;
   history: { t: number; p: number; com: number }[];
 };
 
@@ -29,12 +36,24 @@ function buildState(params: Params): State {
   const v1 = params.v1;
   const v2 = params.v2;
   const p0 = params.mass1 * v1 + params.mass2 * v2;
-  return { x1, x2, v1, v2, time: 0, p0, history: [] };
+  const pScale = Math.max(1e-6, Math.abs(params.mass1 * v1) + Math.abs(params.mass2 * v2));
+  return { x1, x2, v1, v2, time: 0, p0, pScale, history: [] };
 }
 
 function collide(state: State, params: Params) {
   const dx = state.x2 - state.x1;
-  if (Math.abs(dx) > 2 * RADIUS) return;
+  const overlap = 2 * RADIUS - Math.abs(dx);
+  if (overlap <= 0) return;
+  const relV = state.v2 - state.v1;
+  const closing = dx * relV < 0;
+
+  const sign = dx === 0 ? 1 : Math.sign(dx);
+  const shift = overlap / 2;
+  state.x1 -= sign * shift;
+  state.x2 += sign * shift;
+
+  if (!closing) return;
+
   const m1 = params.mass1;
   const m2 = params.mass2;
   const e = params.restitution;
@@ -46,10 +65,6 @@ function collide(state: State, params: Params) {
     ((m2 - e * m1) / (m1 + m2)) * v2 + ((1 + e) * m1) / (m1 + m2) * v1;
   state.v1 = v1p;
   state.v2 = v2p;
-  const overlap = 2 * RADIUS - Math.abs(dx);
-  const shift = overlap / 2;
-  state.x1 -= Math.sign(dx) * shift;
-  state.x2 += Math.sign(dx) * shift;
 }
 
 function stepState(state: State, params: Params, dt: number) {
@@ -89,11 +104,24 @@ function stepState(state: State, params: Params, dt: number) {
 
 function metrics(state: State, params: Params): MetricValue[] {
   const p = params.mass1 * state.v1 + params.mass2 * state.v2;
-  const drift = Math.abs(p - state.p0);
+  const drift = Math.abs(p - state.p0) / state.pScale;
   const com = (params.mass1 * state.x1 + params.mass2 * state.x2) / (params.mass1 + params.mass2);
   return [
-    { id: "momentum", label: "Total momentum", value: p, precision: 4 },
-    { id: "drift", label: "Momentum drift", value: drift, precision: 4 },
+    decorateMetric(
+      { id: "momentum", label: "Total momentum", value: p, precision: 4 },
+      state.p0,
+      Math.max(1e-3, state.pScale * 1e-2)
+    ),
+    decorateMetric(
+      {
+        id: "drift",
+        label: "Momentum drift (normalized)",
+        value: drift,
+        precision: 5,
+      },
+      0,
+      1e-2
+    ),
     { id: "com", label: "Center of mass", value: com, precision: 3 },
   ];
 }
@@ -111,6 +139,15 @@ function charts(state: State): ChartSpec[] {
           label: "p total",
           data: state.history.map((point) => ({ x: point.t, y: point.p })),
           color: "#0f172a",
+          role: "simulation",
+        },
+        {
+          id: "p-ref",
+          label: "p reference",
+          data: state.history.map((point) => ({ x: point.t, y: state.p0 })),
+          color: "#94a3b8",
+          role: "reference",
+          lineStyle: "dashed",
         },
       ],
     },
@@ -137,6 +174,28 @@ export const model: LabModel<Params, State> = {
   summary:
     "Two carts collide in a 1D track. With no external force, total momentum and center-of-mass motion stay constant.",
   archetype: "Collision + COM",
+  simulation: {
+    fixedDt: 1 / 240,
+    maxSubSteps: 20,
+    maxFrameDt: 1 / 20,
+  },
+  meta: {
+    fidelity: "quantitative",
+    assumptions: [
+      "1D point-contact collisions with finite cart radius.",
+      "When external force is zero, boundaries are periodic; otherwise reflective.",
+      "Restitution coefficient applies only during closing contact.",
+    ],
+    validRange: [
+      "mass1/mass2 in [0.5, 4.0]",
+      "v1/v2 in [-1.2, 1.2]",
+      "restitution in [0, 1]",
+      "external force in [0, 1]",
+    ],
+    sources: getBenchmarkSources("v1-ch10-s02-conservation-of-momentum"),
+    notes:
+      "Momentum drift is reported as normalized drift against initial momentum scale.",
+  },
   params: [
     {
       id: "mass1",
@@ -220,6 +279,19 @@ export const model: LabModel<Params, State> = {
   },
   metrics: (state, params) => metrics(state, params),
   charts: (state) => charts(state),
+  validate: (state, params) => {
+    const p = params.mass1 * state.v1 + params.mass2 * state.v2;
+    const driftNorm = Math.abs(p - state.p0) / state.pScale;
+    const checks = [
+      numericCheck("momentum-drift", "Momentum drift (normalized)", driftNorm, 0, 1e-2),
+    ];
+    return statusFromChecks(
+      checks,
+      params.externalForce > 0
+        ? ["External force is active; conservation checks are interpreted as forced-response checks."]
+        : []
+    );
+  },
 };
 
 export function computeMetrics(params: Params) {
