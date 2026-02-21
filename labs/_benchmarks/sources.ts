@@ -11,10 +11,10 @@ export const benchmarkSources: SourceMap = {
       status: "ready",
     },
     {
-      label: "Open mechanics force-sensor lab datasets (curation pending)",
-      url: "/labs/_benchmarks/README.md#pending-datasets",
+      label: "CH10 force sensor profile (N vs time)",
+      url: "/labs/_benchmarks/ch10/s01-force-sensor.json",
       kind: "dataset",
-      status: "pending",
+      status: "ready",
     },
   ],
   "v1-ch10-s02-conservation-of-momentum": [
@@ -25,10 +25,10 @@ export const benchmarkSources: SourceMap = {
       status: "ready",
     },
     {
-      label: "Open air-track collision datasets (curation pending)",
-      url: "/labs/_benchmarks/README.md#pending-datasets",
+      label: "CH10 collision-track profile (normalized momentum drift)",
+      url: "/labs/_benchmarks/ch10/s02-collision-track.json",
       kind: "dataset",
-      status: "pending",
+      status: "ready",
     },
   ],
   "v1-ch10-s03-momentum-is-conserved": [
@@ -39,10 +39,10 @@ export const benchmarkSources: SourceMap = {
       status: "ready",
     },
     {
-      label: "Open recoil cart experiment datasets (curation pending)",
-      url: "/labs/_benchmarks/README.md#pending-datasets",
+      label: "CH10 recoil profile (center-of-mass drift in m)",
+      url: "/labs/_benchmarks/ch10/s03-recoil.json",
       kind: "dataset",
-      status: "pending",
+      status: "ready",
     },
   ],
   "v1-ch10-s04-momentum-and-energy": [
@@ -53,10 +53,10 @@ export const benchmarkSources: SourceMap = {
       status: "ready",
     },
     {
-      label: "Open collision-energy datasets (curation pending)",
-      url: "/labs/_benchmarks/README.md#pending-datasets",
+      label: "CH10 energy-loss profile (Kpost/Kpre vs restitution)",
+      url: "/labs/_benchmarks/ch10/s04-energy-loss.json",
       kind: "dataset",
-      status: "pending",
+      status: "ready",
     },
   ],
   "v1-ch10-s05-relativistic-momentum": [
@@ -67,10 +67,10 @@ export const benchmarkSources: SourceMap = {
       status: "ready",
     },
     {
-      label: "Particle-track momentum datasets (curation pending)",
-      url: "/labs/_benchmarks/README.md#pending-datasets",
+      label: "CH10 relativistic momentum profile (pr/pc vs beta)",
+      url: "/labs/_benchmarks/ch10/s05-relativistic-momentum.json",
       kind: "dataset",
-      status: "pending",
+      status: "ready",
     },
   ],
   "v1-ch01-s01-introduction": [

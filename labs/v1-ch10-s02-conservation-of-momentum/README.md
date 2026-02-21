@@ -1,14 +1,15 @@
-# Isolated Collisions and the Center of Mass
+# Isolated Collision Track with Finite Forcing (SI)
 
-Two carts collide on a track. With no external force, the **total momentum**
-stays constant and the **center of mass** moves steadily.
+Two carts move on an explicit track with bumpers. External forcing is modeled as
+a finite pulse, and dissipation channels (rolling resistance, slope, viscous)
+can be enabled to mimic real lab tracks.
 
 ## What you can do
-- Change the **masses** and **initial velocities**.
-- Adjust the **restitution** to make collisions elastic or inelastic.
-- Apply a constant **external force** to cart 1.
+- Change **masses**, **initial velocities**, and **restitution**.
+- Apply a finite **pulse force** for a finite **duration**.
+- In **Advanced**, add rolling resistance, slope, and viscous drag.
 
 ## What to notice
-- When external force is zero, momentum barely drifts.
-- The center of mass moves at a constant speed in the isolated case.
-- With an external force, the momentum curve bends.
+- In isolated mode, normalized momentum drift should stay below 1%.
+- With forcing/loss terms enabled, conservation gate is intentionally relaxed.
+- Dataset residual tracks how close the drift trajectory is to benchmark runs.

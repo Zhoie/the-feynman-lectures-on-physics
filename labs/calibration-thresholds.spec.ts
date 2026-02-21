@@ -14,6 +14,8 @@ type Metric = {
   status?: "ok" | "warn" | "fail";
 };
 
+const C = 299_792_458;
+
 describe("calibration thresholds", () => {
   it("has no failed status for baseline scenarios", () => {
     const scenarios: Array<{
@@ -43,8 +45,17 @@ describe("calibration thresholds", () => {
       },
       {
         name: "v1-ch10-s01",
-        metrics: mCh10s01({ mass2: 1.5, stretch: 0.25 }) as Metric[],
-        keyMetricIds: ["forceSum", "forceDriftNorm"],
+        metrics: mCh10s01({
+          mass2: 1.5,
+          stretch: 0.12,
+          sensorNoise: 0.04,
+          sensorSmoothing: 0.22,
+        }) as Metric[],
+        keyMetricIds: [
+          "true_force_balance",
+          "measured_force_balance_norm",
+          "dataset_residual_sigma",
+        ],
       },
       {
         name: "v1-ch10-s02",
@@ -54,28 +65,59 @@ describe("calibration thresholds", () => {
           v1: 0.6,
           v2: -0.2,
           restitution: 0.9,
-          externalForce: 0,
+          pulseForce: 0,
+          pulseDuration: 0,
+          rollingMu: 0,
+          slopeDeg: 0,
+          viscousCoeff: 0,
         }) as Metric[],
-        keyMetricIds: ["momentum", "drift"],
+        keyMetricIds: ["momentum", "drift", "dataset_residual_sigma"],
       },
       {
         name: "v1-ch10-s03",
-        metrics: mCh10s03({ mass: 1, energy: 1 }) as Metric[],
-        keyMetricIds: ["momentum", "energy"],
+        metrics: mCh10s03({
+          mass: 1,
+          releaseImpulse: 0.28,
+          releaseDuration: 0.08,
+          asymmetry: 0,
+          fixtureFriction: 0,
+        }) as Metric[],
+        keyMetricIds: [
+          "momentum_drift_norm",
+          "com_drift_norm",
+          "energy_window_ratio",
+          "dataset_residual_sigma",
+        ],
       },
       {
         name: "v1-ch10-s04",
-        metrics: mCh10s04({ mass1: 1, mass2: 1, v1: 0.6, v2: -0.6, restitution: 1 }) as Metric[],
-        keyMetricIds: ["momentum", "kRatio"],
+        metrics: mCh10s04({
+          mass1: 1,
+          mass2: 1.5,
+          v1: 0.8,
+          v2: -0.4,
+          restitution: 1,
+          restitutionSlope: 0,
+          lossCoeff: 0,
+        }) as Metric[],
+        keyMetricIds: ["momentum_drift_norm", "energy_window_ratio"],
       },
       {
         name: "v1-ch10-s05",
-        metrics: mCh10s05({ mass: 1, vMax: 0.9, vProbe: 0.6 }) as Metric[],
-        keyMetricIds: ["err"],
+        metrics: mCh10s05({ mass: 1, vMax: 0.95 * C, vProbe: 0.75 * C }) as Metric[],
+        keyMetricIds: ["formula_residual_pct", "dataset_residual_sigma"],
       },
     ];
 
     for (const scenario of scenarios) {
+      const missing = scenario.keyMetricIds.filter(
+        (metricId) => !scenario.metrics.some((metric) => metric.id === metricId)
+      );
+      expect(
+        missing,
+        `${scenario.name} is missing key metrics: ${missing.join(", ")}`
+      ).toEqual([]);
+
       const failed = scenario.metrics.filter(
         (metric) =>
           scenario.keyMetricIds.includes(metric.id) && metric.status === "fail"

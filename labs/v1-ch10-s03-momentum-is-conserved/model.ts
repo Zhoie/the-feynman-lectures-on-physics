@@ -5,146 +5,337 @@ import {
   numericCheck,
   statusFromChecks,
 } from "@/labs/_benchmarks";
+import {
+  benchmarkSeries,
+  getCh10BenchmarkProfile,
+} from "@/labs/_benchmarks/ch10";
+import { seriesRmsResidual } from "@/labs/v1-ch10-shared/measurement";
+import {
+  externalPulseForce,
+  integrateBody,
+  pulseFromImpulse,
+  resolveWallContact,
+  type Body1D,
+} from "@/labs/v1-ch10-shared/physics";
 
 type Params = {
   mass: number;
-  energy: number;
+  releaseImpulse: number;
+  releaseDuration: number;
+  asymmetry: number;
+  fixtureFriction: number;
+  wallRestitution: number;
+};
+
+type HistoryPoint = {
+  t: number;
+  pLeft: number;
+  pRight: number;
+  pTotal: number;
+  kinetic: number;
+  com: number;
+  comDrift: number;
+  pDrift: number;
+  forceLeft: number;
+  forceRight: number;
 };
 
 type State = {
-  x1: number;
-  x2: number;
-  v1: number;
-  v2: number;
+  left: Body1D;
+  right: Body1D;
   time: number;
-  p0: number;
-  k0: number;
-  history: { t: number; p1: number; p2: number; pTotal: number; k: number }[];
+  com0: number;
+  pScale: number;
+  firstWallContactTime: number | null;
+  history: HistoryPoint[];
 };
 
-const LIMIT = 1.1;
-const CART_HALF = 0.12;
-const ARROW_MAX_WORLD = LIMIT * 0.5;
+const TRACK_LEFT = -1.35;
+const TRACK_RIGHT = 1.35;
+const TRACK_LENGTH = TRACK_RIGHT - TRACK_LEFT;
+const HALF_SIZE = 0.065;
+const RELEASE_START = 0.05;
+const HISTORY_LIMIT = 320;
+const SAMPLE_INTERVAL = 0.01;
+const DATASET_ID = "ch10-s03-recoil";
 
-function buildState(params: Params): State {
-  const separation = CART_HALF * 2.4;
-  const x1 = -separation / 2;
-  const x2 = separation / 2;
-  const v = params.energy > 0 ? Math.sqrt(params.energy / params.mass) : 0;
-  const v1 = v;
-  const v2 = -v;
-  const p0 = params.mass * v1 + params.mass * v2;
-  const k0 = 0.5 * params.mass * (v1 * v1 + v2 * v2);
+const DEFAULT_PARAMS: Params = {
+  mass: 1.0,
+  releaseImpulse: 0.28,
+  releaseDuration: 0.08,
+  asymmetry: 0,
+  fixtureFriction: 0,
+  wallRestitution: 0.95,
+};
+
+function normalizeParams(input?: Partial<Params>): Params {
   return {
-    x1,
-    x2,
-    v1,
-    v2,
+    ...DEFAULT_PARAMS,
+    ...input,
+  };
+}
+
+function buildState(input?: Partial<Params>): State {
+  const params = normalizeParams(input);
+  const mass = Math.max(0.2, params.mass);
+  const left: Body1D = {
+    x: -0.12,
+    v: 0,
+    m: mass,
+    halfSize: HALF_SIZE,
+  };
+  const right: Body1D = {
+    x: 0.12,
+    v: 0,
+    m: mass,
+    halfSize: HALF_SIZE,
+  };
+  const com0 = (left.x + right.x) * 0.5;
+  return {
+    left,
+    right,
     time: 0,
-    p0,
-    k0,
+    com0,
+    pScale: Math.max(1e-6, 2 * Math.abs(params.releaseImpulse)),
+    firstWallContactTime: null,
     history: [],
   };
 }
 
-function resolveCollision(state: State) {
-  const dx = state.x2 - state.x1;
-  const overlap = CART_HALF * 2 - Math.abs(dx);
-  if (overlap <= 0) return;
-  const relV = state.v2 - state.v1;
-  const closing = dx * relV < 0;
-  const sign = dx === 0 ? 1 : Math.sign(dx);
-  const shift = overlap / 2;
-  state.x1 -= sign * shift;
-  state.x2 += sign * shift;
-  if (!closing) return;
-
-  // Equal masses: elastic collision swaps velocities.
-  const v1 = state.v1;
-  state.v1 = state.v2;
-  state.v2 = v1;
+function momentumOf(body: Body1D) {
+  return body.m * body.v;
 }
 
-function stepState(state: State, params: Params, dt: number) {
-  state.x1 += state.v1 * dt;
-  state.x2 += state.v2 * dt;
+function centerOfMass(state: State) {
+  const totalMass = state.left.m + state.right.m;
+  return (state.left.m * state.left.x + state.right.m * state.right.x) / Math.max(1e-9, totalMass);
+}
 
-  if (state.x1 - CART_HALF < -LIMIT) {
-    state.x1 = -LIMIT + CART_HALF;
-    state.v1 *= -1;
-  }
-  if (state.x2 + CART_HALF > LIMIT) {
-    state.x2 = LIMIT - CART_HALF;
-    state.v2 *= -1;
-  }
+function kineticEnergy(state: State) {
+  return (
+    0.5 * state.left.m * state.left.v * state.left.v +
+    0.5 * state.right.m * state.right.v * state.right.v
+  );
+}
 
-  resolveCollision(state);
+function analysisWindow(state: State) {
+  if (!state.history.length) return state.history;
+  if (state.firstWallContactTime == null) return state.history;
+  return state.history.filter((point) => point.t <= state.firstWallContactTime);
+}
+
+function windowMomentumDrift(state: State) {
+  const points = analysisWindow(state);
+  if (!points.length) return 0;
+  let maxDrift = 0;
+  for (const point of points) {
+    maxDrift = Math.max(maxDrift, Math.abs(point.pTotal) / state.pScale);
+  }
+  return maxDrift;
+}
+
+function windowComDriftNorm(state: State) {
+  const points = analysisWindow(state);
+  if (!points.length) return 0;
+  let maxDrift = 0;
+  for (const point of points) {
+    maxDrift = Math.max(maxDrift, Math.abs(point.comDrift) / TRACK_LENGTH);
+  }
+  return maxDrift;
+}
+
+function datasetResidual(state: State) {
+  const profile = getCh10BenchmarkProfile(DATASET_ID);
+  if (!profile) return 0;
+  const window = analysisWindow(state)
+    .filter((point) => point.t <= 0.35)
+    .map((point) => ({ x: point.t, y: Math.abs(point.comDrift) }));
+  return seriesRmsResidual(window, benchmarkSeries(profile));
+}
+
+function preWallEnergyRatio(state: State) {
+  const window = analysisWindow(state).filter(
+    (point) => point.t >= RELEASE_START + 0.1
+  );
+  if (window.length < 6) return 1;
+  const split = Math.floor(window.length / 2);
+  const early = window.slice(0, split);
+  const late = window.slice(split);
+  const avg = (points: HistoryPoint[]) =>
+    points.reduce((sum, point) => sum + point.kinetic, 0) /
+    Math.max(1, points.length);
+  const pre = avg(early);
+  const post = avg(late);
+  return pre > 0 ? post / pre : 1;
+}
+
+function stepState(state: State, input: Partial<Params>, dt: number) {
+  const params = normalizeParams(input);
+  const pulse = pulseFromImpulse(
+    RELEASE_START,
+    Math.max(0.01, params.releaseDuration),
+    Math.max(0, params.releaseImpulse)
+  );
+  const baseForce = externalPulseForce(state.time, pulse);
+
+  const asym = Math.max(-0.25, Math.min(0.25, params.asymmetry));
+  const forceLeft = -baseForce * (1 + asym) - params.fixtureFriction * state.left.v;
+  const forceRight = baseForce * (1 - asym) - params.fixtureFriction * state.right.v;
+
+  integrateBody(state.left, forceLeft, dt);
+  integrateBody(state.right, forceRight, dt);
+
+  const hitLeft = resolveWallContact(state.left, {
+    left: TRACK_LEFT,
+    right: TRACK_RIGHT,
+    wallRestitution: params.wallRestitution,
+    bufferDamping: 0.08,
+  });
+  const hitRight = resolveWallContact(state.right, {
+    left: TRACK_LEFT,
+    right: TRACK_RIGHT,
+    wallRestitution: params.wallRestitution,
+    bufferDamping: 0.08,
+  });
 
   state.time += dt;
-  if (state.time - (state.history.at(-1)?.t ?? -1) > 0.05) {
-    const p1 = params.mass * state.v1;
-    const p2 = params.mass * state.v2;
-    const pTotal = p1 + p2;
-    const k = 0.5 * params.mass * (state.v1 * state.v1 + state.v2 * state.v2);
-    state.history.push({ t: state.time, p1, p2, pTotal, k });
-    if (state.history.length > 160) state.history.shift();
+  if ((hitLeft || hitRight) && state.firstWallContactTime == null) {
+    state.firstWallContactTime = state.time;
+  }
+
+  if (
+    state.history.length === 0 ||
+    state.time - state.history[state.history.length - 1].t >= SAMPLE_INTERVAL
+  ) {
+    const pLeft = momentumOf(state.left);
+    const pRight = momentumOf(state.right);
+    const pTotal = pLeft + pRight;
+    const kinetic = kineticEnergy(state);
+    const com = centerOfMass(state);
+    const comDrift = com - state.com0;
+    const pDrift = Math.abs(pTotal) / state.pScale;
+    state.history.push({
+      t: state.time,
+      pLeft,
+      pRight,
+      pTotal,
+      kinetic,
+      com,
+      comDrift,
+      pDrift,
+      forceLeft,
+      forceRight,
+    });
+    if (state.history.length > HISTORY_LIMIT) {
+      state.history.shift();
+    }
   }
 }
 
-function metrics(state: State, params: Params): MetricValue[] {
-  const p1 = params.mass * state.v1;
-  const p2 = params.mass * state.v2;
-  const pTotal = p1 + p2;
-  const k = 0.5 * params.mass * (state.v1 * state.v1 + state.v2 * state.v2);
+function metrics(state: State): MetricValue[] {
+  const point = state.history[state.history.length - 1];
+  const pLeft = point?.pLeft ?? momentumOf(state.left);
+  const pRight = point?.pRight ?? momentumOf(state.right);
+  const pTotal = point?.pTotal ?? pLeft + pRight;
+  const pDrift = windowMomentumDrift(state);
+  const comDriftNorm = windowComDriftNorm(state);
+  const energyRatio = preWallEnergyRatio(state);
+  const residualSigma = datasetResidual(state);
+
   return [
-    { id: "p1", label: "Momentum p1", value: p1, precision: 4 },
-    { id: "p2", label: "Momentum p2", value: p2, precision: 4 },
+    { id: "p_left", label: "Left cart momentum", value: pLeft, precision: 4, unit: "kg*m/s" },
+    { id: "p_right", label: "Right cart momentum", value: pRight, precision: 4, unit: "kg*m/s" },
     decorateMetric(
-      { id: "momentum", label: "Total momentum", value: Math.abs(pTotal), precision: 6 },
+      {
+        id: "p_total",
+        label: "Total momentum",
+        value: pTotal,
+        precision: 5,
+        unit: "kg*m/s",
+      },
       0,
-      1e-5
+      Math.max(1e-5, state.pScale * 0.01)
     ),
     decorateMetric(
-      { id: "energy", label: "Kinetic energy", value: k, precision: 4 },
-      state.k0,
-      Math.max(1e-3, state.k0 * 0.02)
+      {
+        id: "momentum_drift_norm",
+        label: "Momentum drift in pre-wall window",
+        value: pDrift,
+        precision: 5,
+      },
+      0,
+      0.01
+    ),
+    decorateMetric(
+      {
+        id: "com_drift_norm",
+        label: "COM drift / track length (pre-wall)",
+        value: comDriftNorm,
+        precision: 5,
+      },
+      0,
+      0.005
+    ),
+    decorateMetric(
+      {
+        id: "energy_window_ratio",
+        label: "Energy ratio in pre-wall window",
+        value: energyRatio,
+        precision: 4,
+      },
+      1,
+      0.05
+    ),
+    decorateMetric(
+      {
+        id: "dataset_residual_sigma",
+        label: "Dataset residual (sigma RMS)",
+        value: residualSigma,
+        precision: 3,
+      },
+      0,
+      2
     ),
   ];
 }
 
 function charts(state: State): ChartSpec[] {
+  const profile = getCh10BenchmarkProfile(DATASET_ID);
+  const profileSeries = profile ? benchmarkSeries(profile) : [];
+  const preWall = analysisWindow(state);
+  const energyRef = preWall[0]?.kinetic ?? 0;
   return [
     {
-      id: "p",
-      title: "Momentum along axis",
-      xLabel: "time",
-      yLabel: "p",
+      id: "momentum",
+      title: "Recoil momentum channels",
+      xLabel: "time (s)",
+      yLabel: "p (kg*m/s)",
       series: [
         {
-          id: "p1",
-          label: "p1",
-          data: state.history.map((point) => ({ x: point.t, y: point.p1 })),
+          id: "left",
+          label: "left cart",
+          data: state.history.map((point) => ({ x: point.t, y: point.pLeft })),
           color: "#0f172a",
           role: "simulation",
         },
         {
-          id: "p2",
-          label: "p2",
-          data: state.history.map((point) => ({ x: point.t, y: point.p2 })),
+          id: "right",
+          label: "right cart",
+          data: state.history.map((point) => ({ x: point.t, y: point.pRight })),
           color: "#f97316",
           role: "simulation",
         },
         {
-          id: "pt",
+          id: "total",
           label: "p total",
           data: state.history.map((point) => ({ x: point.t, y: point.pTotal })),
           color: "#0284c7",
           role: "simulation",
         },
         {
-          id: "pt-ref",
-          label: "reference 0",
-          data: state.history.map((point) => ({ x: point.t, y: state.p0 })),
+          id: "ref-zero",
+          label: "reference zero",
+          data: state.history.map((point) => ({ x: point.t, y: 0 })),
           color: "#94a3b8",
           role: "reference",
           lineStyle: "dashed",
@@ -152,25 +343,90 @@ function charts(state: State): ChartSpec[] {
       ],
     },
     {
-      id: "k",
-      title: "Kinetic energy",
-      xLabel: "time",
-      yLabel: "K",
+      id: "energy-window",
+      title: "Pre-wall energy window",
+      xLabel: "time (s)",
+      yLabel: "K (J)",
       series: [
         {
-          id: "k",
-          label: "K",
-          data: state.history.map((point) => ({ x: point.t, y: point.k })),
+          id: "energy",
+          label: "kinetic energy",
+          data: preWall.map((point) => ({
+            x: point.t,
+            y: point.kinetic,
+          })),
           color: "#0284c7",
           role: "simulation",
         },
         {
-          id: "k-ref",
-          label: "K reference",
-          data: state.history.map((point) => ({ x: point.t, y: state.k0 })),
+          id: "energy-ref",
+          label: "initial pre-window level",
+          data: preWall.map((point) => ({
+            x: point.t,
+            y: energyRef,
+          })),
           color: "#94a3b8",
           role: "reference",
           lineStyle: "dashed",
+        },
+      ],
+    },
+    {
+      id: "com-drift",
+      title: "Center-of-mass drift before wall contact",
+      xLabel: "time (s)",
+      yLabel: "|COM drift| (m)",
+      series: [
+        {
+          id: "sim",
+          label: "simulation",
+          data: analysisWindow(state).map((point) => ({ x: point.t, y: Math.abs(point.comDrift) })),
+          color: "#0f172a",
+          role: "simulation",
+        },
+        {
+          id: "dataset",
+          label: "dataset reference",
+          data: profileSeries.map((point) => ({ x: point.x, y: point.y })),
+          color: "#94a3b8",
+          role: "reference",
+          lineStyle: "dashed",
+        },
+      ],
+      bands: profile
+        ? [
+            {
+              id: "dataset-band",
+              label: "dataset uncertainty",
+              color: "rgba(148, 163, 184, 0.18)",
+              data: profileSeries.map((point) => ({
+                x: point.x,
+                yMin: Math.max(0, point.y - Math.abs(point.uncertainty ?? 0)),
+                yMax: point.y + Math.abs(point.uncertainty ?? 0),
+              })),
+            },
+          ]
+        : undefined,
+    },
+    {
+      id: "release",
+      title: "Finite release-force profile",
+      xLabel: "time (s)",
+      yLabel: "force (N)",
+      series: [
+        {
+          id: "left-force",
+          label: "left force",
+          data: state.history.map((point) => ({ x: point.t, y: point.forceLeft })),
+          color: "#0f172a",
+          role: "simulation",
+        },
+        {
+          id: "right-force",
+          label: "right force",
+          data: state.history.map((point) => ({ x: point.t, y: point.forceRight })),
+          color: "#f97316",
+          role: "simulation",
         },
       ],
     },
@@ -179,64 +435,101 @@ function charts(state: State): ChartSpec[] {
 
 export const model: LabModel<Params, State> = {
   id: "v1-ch10-s03-momentum-is-conserved",
-  title: "Equal-Mass Recoil",
+  title: "Recoil Momentum in a Finite Release Window (SI)",
   summary:
-    "Two equal carts recoil with opposite momentum. With elastic walls and equal masses, total momentum stays near zero and kinetic energy stays bounded.",
-  archetype: "Explosion",
+    "Two identical carts receive a finite-duration impulse pair. Pre-wall validation checks total momentum, center-of-mass drift, and dataset residuals.",
+  archetype: "Recoil Conservation",
   simulation: {
-    fixedDt: 1 / 240,
-    maxSubSteps: 20,
+    fixedDt: 1 / 420,
+    maxSubSteps: 30,
     maxFrameDt: 1 / 20,
   },
   meta: {
     fidelity: "quantitative",
     assumptions: [
-      "Two equal masses in 1D with elastic wall reflections.",
-      "No drag or rolling friction losses.",
-      "Cart-cart collision is modeled as perfectly elastic for equal masses.",
+      "Finite-duration release impulse applied as an action-reaction pair.",
+      "Validation window is limited to pre-first-wall-contact data.",
+      "Asymmetry and fixture friction model apparatus imperfections.",
     ],
-    validRange: ["cart mass in [0.5, 4.0]", "release energy in [0, 2.0]"],
+    validRange: [
+      "mass in [0.2, 4.0] kg",
+      "release impulse in [0.02, 0.8] N*s",
+      "release duration in [0.01, 0.30] s",
+    ],
     sources: getBenchmarkSources("v1-ch10-s03-momentum-is-conserved"),
     notes:
-      "This model removes the non-physical stick-and-stop behavior and keeps recoil dynamics conservative.",
+      "Primary acceptance gates: normalized momentum drift <= 1.0%, COM drift <= 0.5% track length.",
   },
   params: [
     {
       id: "mass",
       label: "cart mass",
-      min: 0.5,
-      max: 4,
-      step: 0.1,
-      default: 1.0,
+      min: 0.2,
+      max: 4.0,
+      step: 0.05,
+      unit: "kg",
+      default: DEFAULT_PARAMS.mass,
     },
     {
-      id: "energy",
-      label: "release energy",
+      id: "releaseImpulse",
+      label: "release impulse",
+      min: 0.02,
+      max: 0.8,
+      step: 0.01,
+      unit: "N*s",
+      default: DEFAULT_PARAMS.releaseImpulse,
+    },
+    {
+      id: "releaseDuration",
+      label: "release duration",
+      min: 0.01,
+      max: 0.3,
+      step: 0.005,
+      unit: "s",
+      default: DEFAULT_PARAMS.releaseDuration,
+    },
+    {
+      id: "asymmetry",
+      label: "release asymmetry",
+      group: "advanced",
+      min: -0.2,
+      max: 0.2,
+      step: 0.005,
+      default: DEFAULT_PARAMS.asymmetry,
+    },
+    {
+      id: "fixtureFriction",
+      label: "fixture friction",
+      group: "advanced",
       min: 0,
-      max: 2.0,
-      step: 0.05,
-      default: 1.0,
+      max: 0.25,
+      step: 0.005,
+      unit: "N*s/m",
+      default: DEFAULT_PARAMS.fixtureFriction,
+    },
+    {
+      id: "wallRestitution",
+      label: "wall restitution",
+      group: "advanced",
+      min: 0.7,
+      max: 1,
+      step: 0.01,
+      default: DEFAULT_PARAMS.wallRestitution,
     },
   ],
   create: (params) => buildState(params),
   step: (state, params, dt) => stepState(state, params, dt),
-  draw: (ctx, state, params, size) => {
+  draw: (ctx, state, _params, size) => {
     ctx.clearRect(0, 0, size.width, size.height);
     ctx.fillStyle = "#f8fafc";
     ctx.fillRect(0, 0, size.width, size.height);
 
     const midY = size.height / 2;
-    const trackLeft = size.width * 0.1;
-    const trackRight = size.width * 0.9;
+    const trackLeft = size.width * 0.08;
+    const trackRight = size.width * 0.92;
     const trackWidth = trackRight - trackLeft;
     const mapX = (x: number) =>
-      trackLeft + ((x + LIMIT) / (LIMIT * 2)) * trackWidth;
-    const worldToPx = (world: number) => (world / (LIMIT * 2)) * trackWidth;
-
-    const cartWidth = worldToPx(CART_HALF * 2);
-    const cartHeight = 26;
-    const wallWidth = 12;
-    const wallHeight = 48;
+      trackLeft + ((x - TRACK_LEFT) / TRACK_LENGTH) * trackWidth;
 
     ctx.strokeStyle = "#cbd5f5";
     ctx.lineWidth = 2;
@@ -246,113 +539,62 @@ export const model: LabModel<Params, State> = {
     ctx.stroke();
 
     ctx.fillStyle = "#94a3b8";
-    ctx.fillRect(trackLeft - wallWidth, midY - wallHeight / 2, wallWidth, wallHeight);
-    ctx.fillRect(trackRight, midY - wallHeight / 2, wallWidth, wallHeight);
+    ctx.fillRect(trackLeft - 8, midY - 26, 8, 52);
+    ctx.fillRect(trackRight, midY - 26, 8, 52);
 
-    const com = (state.x1 + state.x2) / 2;
-    const comX = mapX(com);
-    const comY = midY;
-
-    const p1 = params.mass * state.v1;
-    const p2 = params.mass * state.v2;
-    const pTotal = p1 + p2;
-    const pMax = Math.max(Math.abs(p1), Math.abs(p2), 1e-6);
-
-    const drawArrow = (
-      xWorld: number,
-      y: number,
-      dir: number,
-      lengthWorld: number,
-      color: string
-    ) => {
-      if (lengthWorld <= 1e-6) return;
-      const lengthPx = worldToPx(lengthWorld);
-      const startX = mapX(xWorld);
-      const endX = startX + dir * lengthPx;
-      const head = Math.max(8, lengthPx * 0.2);
-      ctx.strokeStyle = color;
-      ctx.fillStyle = color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(startX, y);
-      ctx.lineTo(endX, y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(endX, y);
-      ctx.lineTo(endX - dir * head, y - head * 0.5);
-      ctx.lineTo(endX - dir * head, y + head * 0.5);
-      ctx.closePath();
-      ctx.fill();
-    };
-
-    drawArrow(
-      state.x1,
-      midY - 32,
-      Math.sign(p1) || 1,
-      (Math.abs(p1) / pMax) * ARROW_MAX_WORLD,
-      "#0f172a"
-    );
-    drawArrow(
-      state.x2,
-      midY + 32,
-      Math.sign(p2) || 1,
-      (Math.abs(p2) / pMax) * ARROW_MAX_WORLD,
-      "#f97316"
-    );
-    drawArrow(
-      com,
-      midY - 52,
-      Math.sign(pTotal) || 1,
-      (Math.abs(pTotal) / pMax) * ARROW_MAX_WORLD,
-      "#64748b"
-    );
-
-    const x1 = mapX(state.x1) - cartWidth / 2;
-    const x2 = mapX(state.x2) - cartWidth / 2;
+    const xLeft = mapX(state.left.x);
+    const xRight = mapX(state.right.x);
 
     ctx.fillStyle = "#0f172a";
-    ctx.fillRect(x1, midY - cartHeight / 2, cartWidth, cartHeight);
-
+    ctx.fillRect(xLeft - 16, midY - 12, 32, 24);
     ctx.fillStyle = "#f97316";
-    ctx.fillRect(x2, midY - cartHeight / 2, cartWidth, cartHeight);
+    ctx.fillRect(xRight - 16, midY - 12, 32, 24);
 
-    ctx.strokeStyle = "#64748b";
+    const comX = mapX(centerOfMass(state));
+    ctx.strokeStyle = "#0284c7";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(comX - 6, comY);
-    ctx.lineTo(comX + 6, comY);
-    ctx.moveTo(comX, comY - 6);
-    ctx.lineTo(comX, comY + 6);
+    ctx.moveTo(comX - 6, midY - 20);
+    ctx.lineTo(comX + 6, midY - 20);
+    ctx.moveTo(comX, midY - 26);
+    ctx.lineTo(comX, midY - 14);
     ctx.stroke();
 
     ctx.fillStyle = "#0f172a";
     ctx.font = "12px system-ui";
-    ctx.fillText("p_total ≈ 0", size.width / 2 - 40, midY - 72);
+    ctx.fillText("COM", comX - 12, midY - 30);
   },
-  metrics: (state, params) => metrics(state, params),
+  metrics: (state) => metrics(state),
   charts: (state) => charts(state),
-  validate: (state, params) => {
-    const pTotal = params.mass * state.v1 + params.mass * state.v2;
-    const k = 0.5 * params.mass * (state.v1 * state.v1 + state.v2 * state.v2);
-    return statusFromChecks([
-      numericCheck("momentum-total", "|p_total|", Math.abs(pTotal), 0, 1e-5),
-      numericCheck("energy-conservation", "Kinetic energy", k, state.k0, Math.max(1e-3, state.k0 * 0.02)),
-    ]);
+  validate: (state) => {
+    const pDrift = windowMomentumDrift(state);
+    const comDriftNorm = windowComDriftNorm(state);
+    const energyRatio = preWallEnergyRatio(state);
+    const residualSigma = datasetResidual(state);
+    const warnings: string[] = [];
+    if (state.firstWallContactTime != null && state.firstWallContactTime < 0.2) {
+      warnings.push("Pre-wall observation window is short; lower impulse or increase track margin.");
+    }
+    return statusFromChecks(
+      [
+        numericCheck("momentum-drift", "Momentum drift (normalized)", pDrift, 0, 0.01),
+        numericCheck("com-drift", "COM drift / track length", comDriftNorm, 0, 0.005),
+        numericCheck("energy-window", "Pre-wall energy ratio", energyRatio, 1, 0.05),
+        numericCheck("dataset-match", "Dataset residual RMS (sigma)", residualSigma, 0, 2),
+      ],
+      warnings
+    );
   },
 };
 
-export function computeMetrics(params: Params) {
+export function computeMetrics(input: Partial<Params>) {
+  const params = normalizeParams(input);
   const state = buildState(params);
-  if (params.energy <= 0) {
-    return metrics(state, params);
-  }
-  const v = Math.sqrt(params.energy / params.mass);
-  const distance = LIMIT - CART_HALF - Math.abs(state.x1);
-  const timeToWall = v > 0 ? distance / v : 1;
-  const duration = Math.max(0.2, Math.min(0.45, timeToWall * 0.8));
-  const steps = Math.max(1, Math.floor(duration / 0.005));
+  const totalTime = 1.2;
+  const steps = Math.floor(totalTime * 480);
+  const dt = totalTime / steps;
   for (let i = 0; i < steps; i += 1) {
-    stepState(state, params, 0.005);
+    stepState(state, params, dt);
   }
-  return metrics(state, params);
+  return metrics(state);
 }

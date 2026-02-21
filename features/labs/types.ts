@@ -7,6 +7,7 @@ export type ControlSpec = {
   id: string;
   label: string;
   type?: "range" | "select";
+  group?: "basic" | "advanced";
   min?: number;
   max?: number;
   step?: number;

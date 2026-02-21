@@ -1,33 +1,61 @@
 id: v1-ch10-s01-newton-s-third-law
-title: Action and Reaction
+title: Action and Reaction with Sensor Reality (SI)
 chapter: "10 Conservation of Momentum"
 section: "10-1 Newton's Third Law"
 archetype: action-reaction
 summary: >
-  Two carts are linked by a spring. Cart 1 stays at 1 unit mass; the force
-  sensors always show equal and opposite forces.
+  Spring-damper coupled carts with explicit sensor sampling/lag/noise model.
+  Reports true vs measured force balance under SI units.
 controls:
   - id: mass2
     label: cart 2 mass
     type: range
-    min: 0.5
-    max: 4.0
-    step: 0.1
-    default: 1.5
+    min: 0.3
+    max: 3.0
+    step: 0.05
+    default: 1.2
   - id: stretch
     label: initial spring stretch
     type: range
-    min: 0.05
-    max: 0.6
-    step: 0.05
-    default: 0.25
+    min: 0.01
+    max: 0.2
+    step: 0.005
+    default: 0.08
+  - id: springDamping
+    label: spring damping c
+    type: range
+    min: 0.0
+    max: 8.0
+    step: 0.1
+    default: 2.0
+  - id: sensorHz
+    label: sensor sample rate
+    type: range
+    min: 20
+    max: 400
+    step: 5
+    default: 120
+  - id: sensorSmoothing
+    label: sensor smoothing
+    type: range
+    min: 0.02
+    max: 1.0
+    step: 0.02
+    default: 0.22
+  - id: sensorNoise
+    label: sensor noise std
+    type: range
+    min: 0.0
+    max: 0.3
+    step: 0.01
+    default: 0.08
 metrics:
-  - id: f12
-    label: Force on cart 1
-  - id: f21
-    label: Force on cart 2
-  - id: forceSum
-    label: F12 + F21
+  - id: true_force_balance
+    label: True F12 + F21
+  - id: measured_force_balance_norm
+    label: Measured normalized residual
+  - id: dataset_residual_sigma
+    label: Dataset residual (sigma RMS)
 assertions:
-  - when: any time
-    expect: F12 + F21 ~ 0
+  - when: sensor correction enabled
+    expect: normalized measured residual <= 2%

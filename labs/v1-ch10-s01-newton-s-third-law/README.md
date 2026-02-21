@@ -1,12 +1,15 @@
-# Action and Reaction
+# Action and Reaction with Sensor Reality (SI)
 
-Two carts are connected by a spring. Force sensors on each cart show that the
-forces are always equal in magnitude and opposite in direction.
+Two carts are linked by a spring-damper pair in SI units. The model keeps the
+physical truth `F12 = -F21`, then passes each channel through sensor sampling,
+low-pass smoothing, offset, and noise.
 
 ## What you can do
-- Change the **mass of cart 2** (cart 1 stays at 1 unit).
-- Set the **initial spring stretch** to control the force size.
+- Change **cart 2 mass** and **initial spring stretch**.
+- Tune **spring damping**.
+- In **Advanced**, tune sensor Hz, smoothing, offset, and noise.
 
 ## What to notice
-- `F12` and `F21` mirror each other at all times.
-- The sum `F12 + F21` stays near zero.
+- True force balance stays near zero.
+- Measured force balance is not perfectly zero because instruments are imperfect.
+- The normalized measured residual and dataset sigma gate define pass/fail.

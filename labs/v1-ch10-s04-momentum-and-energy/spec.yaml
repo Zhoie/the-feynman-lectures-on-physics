@@ -1,54 +1,70 @@
 id: v1-ch10-s04-momentum-and-energy
-title: Momentum Conserved, Energy Not Always
+title: Momentum Conserved with Real Collision Loss Channels (SI)
 chapter: "10 Conservation of Momentum"
 section: "10-4 Momentum and energy"
 archetype: momentum-energy
 summary: >
-  Two carts collide with adjustable restitution. Momentum stays constant,
-  while kinetic energy can drop for inelastic collisions.
+  Velocity-dependent restitution plus explicit non-conservative loss channels,
+  with energy ratio computed in pre/post collision windows.
 controls:
   - id: mass1
     label: mass 1
     type: range
-    min: 0.5
+    min: 0.2
     max: 4.0
-    step: 0.1
+    step: 0.05
     default: 1.0
   - id: mass2
     label: mass 2
     type: range
-    min: 0.5
+    min: 0.2
     max: 4.0
-    step: 0.1
+    step: 0.05
     default: 1.5
   - id: v1
     label: v1 initial
     type: range
-    min: -1.0
-    max: 1.0
-    step: 0.05
+    min: -1.5
+    max: 1.5
+    step: 0.02
     default: 0.8
   - id: v2
     label: v2 initial
     type: range
-    min: -1.0
-    max: 1.0
-    step: 0.05
+    min: -1.5
+    max: 1.5
+    step: 0.02
     default: -0.4
   - id: restitution
-    label: restitution e
+    label: base restitution
+    type: range
+    min: 0.2
+    max: 1.0
+    step: 0.01
+    default: 0.9
+  - id: restitutionSlope
+    label: restitution speed slope
     type: range
     min: 0.0
-    max: 1.0
-    step: 0.05
-    default: 0.7
+    max: 0.25
+    step: 0.005
+    default: 0.03
+  - id: lossCoeff
+    label: non-conservative loss coeff
+    type: range
+    min: 0.0
+    max: 0.25
+    step: 0.005
+    default: 0.03
 metrics:
-  - id: momentum
-    label: Total momentum
-  - id: kRatio
-    label: K / K0
+  - id: momentum_drift_norm
+    label: Momentum drift (normalized)
+  - id: energy_window_ratio
+    label: Kpost/Kpre (window)
+  - id: effective_restitution
+    label: Effective restitution e(v)
+  - id: dataset_residual_sigma
+    label: Dataset residual (sigma RMS)
 assertions:
-  - when: e = 1
-    expect: K / K0 ~ 1
-  - when: e < 1
-    expect: K / K0 decreases
+  - when: restitution=1, slope=0, lossCoeff=0
+    expect: Kpost/Kpre in [0.95, 1.05]

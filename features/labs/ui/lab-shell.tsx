@@ -41,7 +41,12 @@ function statusPill(status?: "ok" | "warn" | "fail") {
 function formatMetric(metric: MetricValue) {
   if (typeof metric.value !== "number") return `${metric.value}`;
   const precision = metric.precision ?? 3;
-  return metric.value.toFixed(precision);
+  const abs = Math.abs(metric.value);
+  if (abs >= 1e4 || (abs > 0 && abs < 1e-3)) {
+    return metric.value.toExponential(Math.min(4, Math.max(1, precision)));
+  }
+  const fixed = metric.value.toFixed(precision);
+  return fixed === "-0.000" ? "0.000" : fixed;
 }
 
 export function LabShell({ model }: LabShellProps) {
@@ -61,6 +66,7 @@ export function LabShell({ model }: LabShellProps) {
   const [charts, setCharts] = useState<ChartSpec[]>([]);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [resetToken, setResetToken] = useState(0);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const { canvasRef, width, height, dpr } = useCanvasSize({ height: 360 });
 
   const stateRef = useRef<unknown>(null);
@@ -72,6 +78,81 @@ export function LabShell({ model }: LabShellProps) {
     [model.simulation]
   );
   const meta = model.meta ?? DEFAULT_META;
+  const controls = useMemo(() => {
+    const basic = model.params.filter((param) => (param.group ?? "basic") === "basic");
+    const advanced = model.params.filter(
+      (param) => (param.group ?? "basic") === "advanced"
+    );
+    return { basic, advanced };
+  }, [model.params]);
+
+  const renderControl = (param: (typeof model.params)[number]) => {
+    const fallback =
+      typeof param.default === "number"
+        ? param.default
+        : param.options?.[0]?.value ?? 0;
+    const rawValue = params[param.id];
+    const value = Number.isFinite(rawValue) ? rawValue : fallback;
+    const controlType = param.type ?? "range";
+    if (param.visibleWhen && !param.visibleWhen(params)) {
+      return null;
+    }
+    if (controlType === "select" && param.options) {
+      return (
+        <label key={param.id} className="flex flex-col gap-2 text-sm">
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>{param.label}</span>
+            <span>
+              {Number.isFinite(value) ? value.toFixed(3) : "—"}
+              {param.unit ? ` ${param.unit}` : ""}
+            </span>
+          </div>
+          <select
+            value={value}
+            onChange={(event) =>
+              setParams((prev) => ({
+                ...prev,
+                [param.id]: Number(event.target.value),
+              }))
+            }
+            className="rounded-lg border border-slate-900/10 bg-white px-2 py-1 text-sm text-slate-700"
+          >
+            {param.options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      );
+    }
+
+    return (
+      <label key={param.id} className="flex flex-col gap-2 text-sm">
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>{param.label}</span>
+          <span>
+            {Number.isFinite(value) ? value.toFixed(3) : "—"}
+            {param.unit ? ` ${param.unit}` : ""}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={param.min}
+          max={param.max}
+          step={param.step}
+          value={value}
+          onChange={(event) =>
+            setParams((prev) => ({
+              ...prev,
+              [param.id]: Number(event.target.value),
+            }))
+          }
+          className="w-full accent-slate-900"
+        />
+      </label>
+    );
+  };
 
   useEffect(() => {
     setParams(defaultParams);
@@ -177,73 +258,24 @@ export function LabShell({ model }: LabShellProps) {
             </button>
           </div>
           <div className="flex flex-col gap-4">
-            {model.params.map((param) => {
-              const fallback =
-                typeof param.default === "number"
-                  ? param.default
-                  : param.options?.[0]?.value ?? 0;
-              const rawValue = params[param.id];
-              const value = Number.isFinite(rawValue) ? rawValue : fallback;
-              const controlType = param.type ?? "range";
-              if (param.visibleWhen && !param.visibleWhen(params)) {
-                return null;
-              }
-              if (controlType === "select" && param.options) {
-                return (
-                  <label key={param.id} className="flex flex-col gap-2 text-sm">
-                    <div className="flex items-center justify-between text-xs text-slate-500">
-                      <span>{param.label}</span>
-                      <span>
-                        {Number.isFinite(value) ? value.toFixed(3) : "—"}
-                        {param.unit ? ` ${param.unit}` : ""}
-                      </span>
-                    </div>
-                    <select
-                      value={value}
-                      onChange={(event) =>
-                        setParams((prev) => ({
-                          ...prev,
-                          [param.id]: Number(event.target.value),
-                        }))
-                      }
-                      className="rounded-lg border border-slate-900/10 bg-white px-2 py-1 text-sm text-slate-700"
-                    >
-                      {param.options.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                );
-              }
-
-              return (
-                <label key={param.id} className="flex flex-col gap-2 text-sm">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>{param.label}</span>
-                    <span>
-                      {Number.isFinite(value) ? value.toFixed(3) : "—"}
-                      {param.unit ? ` ${param.unit}` : ""}
-                    </span>
+            {controls.basic.map((param) => renderControl(param))}
+            {controls.advanced.length ? (
+              <div className="rounded-xl border border-slate-900/10 bg-slate-50/80 p-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced((prev) => !prev)}
+                  className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-[0.22em] text-slate-500"
+                >
+                  <span>Advanced</span>
+                  <span>{showAdvanced ? "Hide" : "Show"}</span>
+                </button>
+                {showAdvanced ? (
+                  <div className="mt-3 flex flex-col gap-4">
+                    {controls.advanced.map((param) => renderControl(param))}
                   </div>
-                  <input
-                    type="range"
-                    min={param.min}
-                    max={param.max}
-                    step={param.step}
-                    value={value}
-                    onChange={(event) =>
-                      setParams((prev) => ({
-                        ...prev,
-                        [param.id]: Number(event.target.value),
-                      }))
-                    }
-                    className="w-full accent-slate-900"
-                  />
-                </label>
-              );
-            })}
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="flex flex-col gap-4 rounded-2xl border border-slate-900/10 bg-white/70 p-4">

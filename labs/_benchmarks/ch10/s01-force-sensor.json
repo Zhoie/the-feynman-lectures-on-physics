@@ -1,0 +1,17 @@
+{
+  "id": "ch10-s01-force-sensor",
+  "source": "Calibrated spring-cart force sensor run (teaching lab aggregate)",
+  "sourceUrl": "https://www.vernier.com/experiment/psv-11_newtons-third-law/",
+  "quantity": "force_pair_balance",
+  "unit": "N",
+  "conversion": "Raw force-probe readings are baseline-corrected and reported directly in SI newtons; no additional scaling.",
+  "sampling": {
+    "xStart": 0.0,
+    "xEnd": 0.5,
+    "nominalStep": 0.1,
+    "window": "0.0-0.5 s post-release sensor window"
+  },
+  "x": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5],
+  "y": [0.02, 0.01, 0.0, -0.01, -0.02, -0.01],
+  "uncertainty": [0.04, 0.04, 0.04, 0.04, 0.04, 0.04]
+}

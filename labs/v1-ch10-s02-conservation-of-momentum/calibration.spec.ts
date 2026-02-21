@@ -10,26 +10,31 @@ function metricValue(metrics: ReturnType<typeof computeMetrics>, id: string) {
 }
 
 describe("v1-ch10-s02 calibration", () => {
-  it("maintains low normalized drift in isolated case", () => {
+  it("keeps isolated normalized momentum drift within 1%", () => {
     const metrics = computeMetrics({
       mass1: 1.2,
       mass2: 2.1,
       v1: 0.7,
       v2: -0.2,
       restitution: 0.9,
-      externalForce: 0,
+      pulseForce: 0,
+      pulseDuration: 0,
+      rollingMu: 0,
+      slopeDeg: 0,
+      viscousCoeff: 0,
     });
-    expect(metricValue(metrics, "drift")).toBeLessThan(1e-2);
+    expect(metricValue(metrics, "drift")).toBeLessThanOrEqual(0.01);
   });
 
-  it("shows higher drift when external force is applied", () => {
+  it("enforces forced-mode drift above isolated baseline", () => {
     const isolated = computeMetrics({
       mass1: 1.2,
       mass2: 2.1,
       v1: 0.7,
       v2: -0.2,
       restitution: 0.9,
-      externalForce: 0,
+      pulseForce: 0,
+      pulseDuration: 0,
     });
     const forced = computeMetrics({
       mass1: 1.2,
@@ -37,8 +42,22 @@ describe("v1-ch10-s02 calibration", () => {
       v1: 0.7,
       v2: -0.2,
       restitution: 0.9,
-      externalForce: 0.6,
+      pulseForce: 4.5,
+      pulseDuration: 0.18,
     });
-    expect(metricValue(forced, "drift")).toBeGreaterThan(metricValue(isolated, "drift"));
+    expect(metricValue(forced, "drift")).toBeGreaterThan(metricValue(isolated, "drift") + 0.01);
+  });
+
+  it("stays within dataset residual envelope", () => {
+    const metrics = computeMetrics({
+      mass1: 0.9,
+      mass2: 1.4,
+      v1: 0.5,
+      v2: -0.1,
+      restitution: 0.94,
+      pulseForce: 0,
+      pulseDuration: 0,
+    });
+    expect(metricValue(metrics, "dataset_residual_sigma")).toBeLessThanOrEqual(2);
   });
 });

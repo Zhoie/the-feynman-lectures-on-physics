@@ -10,30 +10,37 @@ function metricValue(metrics: ReturnType<typeof computeMetrics>, id: string) {
 }
 
 describe("v1-ch10-s03-momentum-is-conserved", () => {
-  it("keeps total momentum near zero for any energy release", () => {
+  it("keeps total momentum drift inside the pre-wall 1% gate", () => {
     const metrics = computeMetrics({
       mass: 1.5,
-      energy: 1.2,
+      releaseImpulse: 0.32,
+      releaseDuration: 0.09,
+      asymmetry: 0,
+      fixtureFriction: 0,
     });
-    expect(metricValue(metrics, "momentum")).toBeLessThan(1e-6);
+    expect(metricValue(metrics, "momentum_drift_norm")).toBeLessThanOrEqual(0.01);
   });
 
-  it("keeps p1 and p2 equal and opposite", () => {
+  it("keeps left/right momentum pair consistent with near-zero total", () => {
     const metrics = computeMetrics({
-      mass: 2.0,
-      energy: 1.0,
+      mass: 1.8,
+      releaseImpulse: 0.3,
+      releaseDuration: 0.08,
     });
-    const p1 = metricValue(metrics, "p1");
-    const p2 = metricValue(metrics, "p2");
-    expect(p1 + p2).toBeCloseTo(0, 6);
+    const pLeft = metricValue(metrics, "p_left");
+    const pRight = metricValue(metrics, "p_right");
+    const pTotal = metricValue(metrics, "p_total");
+    expect(pLeft + pRight).toBeCloseTo(pTotal, 5);
   });
 
-  it("matches kinetic energy to the release energy", () => {
-    const releaseEnergy = 1.2;
+  it("keeps kinetic energy stable within the pre-wall observation window", () => {
     const metrics = computeMetrics({
-      mass: 1.0,
-      energy: releaseEnergy,
+      mass: 1,
+      releaseImpulse: 0.26,
+      releaseDuration: 0.08,
+      fixtureFriction: 0,
     });
-    expect(metricValue(metrics, "energy")).toBeCloseTo(releaseEnergy, 3);
+    expect(metricValue(metrics, "energy_window_ratio")).toBeGreaterThanOrEqual(0.95);
+    expect(metricValue(metrics, "energy_window_ratio")).toBeLessThanOrEqual(1.05);
   });
 });

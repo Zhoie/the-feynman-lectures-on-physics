@@ -1,0 +1,17 @@
+{
+  "id": "ch10-s04-energy-loss",
+  "source": "Inelastic collision energy-loss benchmark (teaching lab aggregate)",
+  "sourceUrl": "https://www.vernier.com/experiment/pwv-22_collisions-in-one-dimension/",
+  "quantity": "kinetic_energy_ratio",
+  "unit": "1",
+  "conversion": "Kpost/Kpre ratio computed from SI kinetic energy values in joules over matched pre/post windows.",
+  "sampling": {
+    "xStart": 0.2,
+    "xEnd": 1.0,
+    "nominalStep": 0.2,
+    "window": "Per-setting collision-window average"
+  },
+  "x": [0.2, 0.4, 0.6, 0.8, 1.0],
+  "y": [0.31, 0.46, 0.63, 0.81, 0.98],
+  "uncertainty": [0.06, 0.06, 0.05, 0.05, 0.04]
+}

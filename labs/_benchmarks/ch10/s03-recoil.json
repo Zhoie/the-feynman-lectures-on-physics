@@ -1,0 +1,17 @@
+{
+  "id": "ch10-s03-recoil",
+  "source": "Recoil cart release benchmark (teaching lab aggregate)",
+  "sourceUrl": "https://www.compadre.org/osp/EJSS/4675/148.htm",
+  "quantity": "center_of_mass_drift",
+  "unit": "m",
+  "conversion": "Video-tracked center-of-mass displacement converted from cm to m before residual comparison.",
+  "sampling": {
+    "xStart": 0.05,
+    "xEnd": 0.25,
+    "nominalStep": 0.05,
+    "window": "Pre-first-wall-contact recoil interval"
+  },
+  "x": [0.05, 0.1, 0.15, 0.2, 0.25],
+  "y": [0.0005, 0.001, 0.0015, 0.0017, 0.002],
+  "uncertainty": [0.001, 0.001, 0.0012, 0.0012, 0.0015]
+}

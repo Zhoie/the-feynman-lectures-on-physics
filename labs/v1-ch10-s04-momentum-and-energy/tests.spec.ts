@@ -10,25 +10,31 @@ function metricValue(metrics: ReturnType<typeof computeMetrics>, id: string) {
 }
 
 describe("v1-ch10-s04-momentum-and-energy", () => {
-  it("keeps energy nearly constant for elastic collision", () => {
+  it("keeps windowed Kpost/Kpre near 1 for elastic calibration preset", () => {
     const metrics = computeMetrics({
       mass1: 1,
       mass2: 1.5,
       v1: 0.8,
       v2: -0.4,
       restitution: 1,
+      restitutionSlope: 0,
+      lossCoeff: 0,
     });
-    expect(metricValue(metrics, "kRatio")).toBeGreaterThan(0.98);
+    const ratio = metricValue(metrics, "energy_window_ratio");
+    expect(ratio).toBeGreaterThanOrEqual(0.95);
+    expect(ratio).toBeLessThanOrEqual(1.05);
   });
 
-  it("reduces energy for inelastic collision", () => {
+  it("shows energy loss when restitution and dissipation are reduced", () => {
     const metrics = computeMetrics({
       mass1: 1,
       mass2: 1.5,
       v1: 0.8,
       v2: -0.4,
       restitution: 0.4,
+      restitutionSlope: 0.06,
+      lossCoeff: 0.08,
     });
-    expect(metricValue(metrics, "kRatio")).toBeLessThan(0.9);
+    expect(metricValue(metrics, "energy_window_ratio")).toBeLessThan(0.9);
   });
 });

@@ -1,0 +1,16 @@
+{
+  "id": "ch10-s05-relativistic-momentum",
+  "source": "High-energy momentum ratio reference profile",
+  "sourceUrl": "https://pdg.lbl.gov/2025/reviews/rpp2024-rev-kinematics.pdf",
+  "quantity": "relativistic_momentum_ratio",
+  "unit": "1",
+  "conversion": "Reference is dimensionless p_rel/p_classical ratio using SI c and beta; no extra unit scaling applied.",
+  "sampling": {
+    "xStart": 0.1,
+    "xEnd": 0.95,
+    "window": "Calibrated beta band"
+  },
+  "x": [0.1, 0.3, 0.5, 0.7, 0.85, 0.95],
+  "y": [1.005, 1.048, 1.155, 1.4, 1.899, 3.203],
+  "uncertainty": [0.01, 0.015, 0.02, 0.03, 0.05, 0.08]
+}

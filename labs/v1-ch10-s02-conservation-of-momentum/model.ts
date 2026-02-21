@@ -5,6 +5,22 @@ import {
   numericCheck,
   statusFromChecks,
 } from "@/labs/_benchmarks";
+import {
+  benchmarkSeries,
+  getCh10BenchmarkProfile,
+} from "@/labs/_benchmarks/ch10";
+import { seriesRmsResidual } from "@/labs/v1-ch10-shared/measurement";
+import {
+  externalPulseForce,
+  integrateBody,
+  resolveBodyCollision,
+  resolveWallContact,
+  rollingResistanceForce,
+  slopeForce,
+  viscousForce,
+  type Body1D,
+  type ResistanceConfig,
+} from "@/labs/v1-ch10-shared/physics";
 
 type Params = {
   mass1: number;
@@ -12,105 +28,185 @@ type Params = {
   v1: number;
   v2: number;
   restitution: number;
-  externalForce: number;
+  pulseForce: number;
+  pulseDuration: number;
+  rollingMu: number;
+  slopeDeg: number;
+  viscousCoeff: number;
 };
 
 type State = {
-  x1: number;
-  x2: number;
-  v1: number;
-  v2: number;
+  cart1: Body1D;
+  cart2: Body1D;
   time: number;
   p0: number;
   pScale: number;
-  history: { t: number; p: number; com: number }[];
+  com0: number;
+  history: { t: number; p: number; com: number; drift: number; pulse: number }[];
 };
 
-const RADIUS = 0.08;
-const LEFT = -1.1;
-const RIGHT = 1.1;
+const TRACK_LEFT = -1.2;
+const TRACK_RIGHT = 1.2;
+const CART_HALF = 0.07;
+const PULSE_START = 0.2;
+const DATASET_ID = "ch10-s02-collision-track";
+const HISTORY_LIMIT = 240;
 
-function buildState(params: Params): State {
-  const x1 = -0.6;
-  const x2 = 0.6;
-  const v1 = params.v1;
-  const v2 = params.v2;
-  const p0 = params.mass1 * v1 + params.mass2 * v2;
-  const pScale = Math.max(1e-6, Math.abs(params.mass1 * v1) + Math.abs(params.mass2 * v2));
-  return { x1, x2, v1, v2, time: 0, p0, pScale, history: [] };
+const DEFAULT_PARAMS: Params = {
+  mass1: 0.8,
+  mass2: 1.2,
+  v1: 0.7,
+  v2: -0.25,
+  restitution: 0.93,
+  pulseForce: 0,
+  pulseDuration: 0.18,
+  rollingMu: 0,
+  slopeDeg: 0,
+  viscousCoeff: 0,
+};
+
+function normalizeParams(input?: Partial<Params>): Params {
+  return {
+    ...DEFAULT_PARAMS,
+    ...input,
+  };
 }
 
-function collide(state: State, params: Params) {
-  const dx = state.x2 - state.x1;
-  const overlap = 2 * RADIUS - Math.abs(dx);
-  if (overlap <= 0) return;
-  const relV = state.v2 - state.v1;
-  const closing = dx * relV < 0;
-
-  const sign = dx === 0 ? 1 : Math.sign(dx);
-  const shift = overlap / 2;
-  state.x1 -= sign * shift;
-  state.x2 += sign * shift;
-
-  if (!closing) return;
-
-  const m1 = params.mass1;
-  const m2 = params.mass2;
-  const e = params.restitution;
-  const v1 = state.v1;
-  const v2 = state.v2;
-  const v1p =
-    ((m1 - e * m2) / (m1 + m2)) * v1 + ((1 + e) * m2) / (m1 + m2) * v2;
-  const v2p =
-    ((m2 - e * m1) / (m1 + m2)) * v2 + ((1 + e) * m1) / (m1 + m2) * v1;
-  state.v1 = v1p;
-  state.v2 = v2p;
+function momentum(state: State) {
+  return state.cart1.m * state.cart1.v + state.cart2.m * state.cart2.v;
 }
 
-function stepState(state: State, params: Params, dt: number) {
-  const a1 = params.externalForce / params.mass1;
-  state.v1 += a1 * dt;
+function centerOfMass(state: State) {
+  return (
+    (state.cart1.m * state.cart1.x + state.cart2.m * state.cart2.x) /
+    (state.cart1.m + state.cart2.m)
+  );
+}
 
-  state.x1 += state.v1 * dt;
-  state.x2 += state.v2 * dt;
+function buildState(input: Partial<Params>): State {
+  const params = normalizeParams(input);
+  const cart1: Body1D = {
+    x: -0.55,
+    v: params.v1,
+    m: Math.max(0.2, params.mass1),
+    halfSize: CART_HALF,
+  };
+  const cart2: Body1D = {
+    x: 0.55,
+    v: params.v2,
+    m: Math.max(0.2, params.mass2),
+    halfSize: CART_HALF,
+  };
+  const p0 = cart1.m * cart1.v + cart2.m * cart2.v;
+  const pScale = Math.max(1e-6, Math.abs(cart1.m * cart1.v) + Math.abs(cart2.m * cart2.v));
+  const com0 = (cart1.m * cart1.x + cart2.m * cart2.x) / (cart1.m + cart2.m);
+  return {
+    cart1,
+    cart2,
+    time: 0,
+    p0,
+    pScale,
+    com0,
+    history: [],
+  };
+}
 
-  if (params.externalForce > 0) {
-    if (state.x1 - RADIUS < LEFT) {
-      state.x1 = LEFT + RADIUS;
-      state.v1 *= -1;
-    }
-    if (state.x2 + RADIUS > RIGHT) {
-      state.x2 = RIGHT - RADIUS;
-      state.v2 *= -1;
-    }
-  } else {
-    const span = RIGHT - LEFT;
-    if (state.x1 < LEFT) state.x1 += span;
-    if (state.x1 > RIGHT) state.x1 -= span;
-    if (state.x2 < LEFT) state.x2 += span;
-    if (state.x2 > RIGHT) state.x2 -= span;
-  }
+function isIsolated(params: Params) {
+  return (
+    Math.abs(params.pulseForce) < 1e-9 &&
+    Math.abs(params.pulseDuration) < 1e-9 &&
+    Math.abs(params.rollingMu) < 1e-9 &&
+    Math.abs(params.slopeDeg) < 1e-9 &&
+    Math.abs(params.viscousCoeff) < 1e-9
+  );
+}
 
-  collide(state, params);
+function stepState(state: State, input: Partial<Params>, dt: number) {
+  const params = normalizeParams(input);
+  const resistance: ResistanceConfig = {
+    rollingMu: params.rollingMu,
+    slopeDeg: params.slopeDeg,
+    viscousCoeff: params.viscousCoeff,
+  };
+
+  const pulse = {
+    start: PULSE_START,
+    duration: Math.max(0, params.pulseDuration),
+    amplitude: params.pulseForce,
+  };
+  const forcePulse = externalPulseForce(state.time, pulse);
+
+  const f1 =
+    slopeForce(state.cart1, resistance) +
+    rollingResistanceForce(state.cart1, resistance) +
+    viscousForce(state.cart1, resistance) +
+    forcePulse;
+  const f2 =
+    slopeForce(state.cart2, resistance) +
+    rollingResistanceForce(state.cart2, resistance) +
+    viscousForce(state.cart2, resistance);
+
+  integrateBody(state.cart1, f1, dt);
+  integrateBody(state.cart2, f2, dt);
+
+  resolveBodyCollision(state.cart1, state.cart2, params.restitution);
+  resolveWallContact(state.cart1, {
+    left: TRACK_LEFT,
+    right: TRACK_RIGHT,
+    wallRestitution: 0.9,
+    bufferDamping: 0.12,
+  });
+  resolveWallContact(state.cart2, {
+    left: TRACK_LEFT,
+    right: TRACK_RIGHT,
+    wallRestitution: 0.9,
+    bufferDamping: 0.12,
+  });
+
   state.time += dt;
-
-  if (state.time - (state.history.at(-1)?.t ?? -1) > 0.05) {
-    const p = params.mass1 * state.v1 + params.mass2 * state.v2;
-    const com = (params.mass1 * state.x1 + params.mass2 * state.x2) / (params.mass1 + params.mass2);
-    state.history.push({ t: state.time, p, com });
-    if (state.history.length > 140) state.history.shift();
+  if (
+    state.history.length === 0 ||
+    state.time - state.history[state.history.length - 1].t > 0.02
+  ) {
+    const p = momentum(state);
+    const com = centerOfMass(state);
+    const drift = Math.abs(p - state.p0) / state.pScale;
+    state.history.push({
+      t: state.time,
+      p,
+      com,
+      drift,
+      pulse: forcePulse,
+    });
+    if (state.history.length > HISTORY_LIMIT) {
+      state.history.shift();
+    }
   }
+}
+
+function datasetResidual(state: State) {
+  const profile = getCh10BenchmarkProfile(DATASET_ID);
+  if (!profile) return 0;
+  const sim = state.history
+    .filter((point) => point.t >= 0.1 && point.t <= 0.5)
+    .map((point) => ({ x: point.t, y: point.drift }));
+  return seriesRmsResidual(sim, benchmarkSeries(profile));
 }
 
 function metrics(state: State, params: Params): MetricValue[] {
-  const p = params.mass1 * state.v1 + params.mass2 * state.v2;
+  const p = momentum(state);
   const drift = Math.abs(p - state.p0) / state.pScale;
-  const com = (params.mass1 * state.x1 + params.mass2 * state.x2) / (params.mass1 + params.mass2);
+  const com = centerOfMass(state);
+  const comDrift = Math.abs(com - state.com0);
+  const residualSigma = datasetResidual(state);
+  const isolated = isIsolated(params);
+  const driftTolerance = isolated ? 0.01 : 0.04;
+
   return [
     decorateMetric(
-      { id: "momentum", label: "Total momentum", value: p, precision: 4 },
+      { id: "momentum", label: "Total momentum", value: p, precision: 4, unit: "kg*m/s" },
       state.p0,
-      Math.max(1e-3, state.pScale * 1e-2)
+      Math.max(1e-3, state.pScale * driftTolerance)
     ),
     decorateMetric(
       {
@@ -120,19 +216,40 @@ function metrics(state: State, params: Params): MetricValue[] {
         precision: 5,
       },
       0,
-      1e-2
+      driftTolerance
     ),
-    { id: "com", label: "Center of mass", value: com, precision: 3 },
+    decorateMetric(
+      {
+        id: "com_drift",
+        label: "Center-of-mass drift",
+        value: comDrift,
+        precision: 4,
+        unit: "m",
+      },
+      0,
+      0.01
+    ),
+    decorateMetric(
+      {
+        id: "dataset_residual_sigma",
+        label: "Dataset residual (sigma RMS)",
+        value: residualSigma,
+        precision: 3,
+      },
+      0,
+      2
+    ),
   ];
 }
 
 function charts(state: State): ChartSpec[] {
+  const profile = getCh10BenchmarkProfile(DATASET_ID);
   return [
     {
       id: "momentum",
       title: "Momentum vs time",
-      xLabel: "time",
-      yLabel: "p",
+      xLabel: "time (s)",
+      yLabel: "p (kg*m/s)",
       series: [
         {
           id: "p",
@@ -143,7 +260,7 @@ function charts(state: State): ChartSpec[] {
         },
         {
           id: "p-ref",
-          label: "p reference",
+          label: "initial p",
           data: state.history.map((point) => ({ x: point.t, y: state.p0 })),
           color: "#94a3b8",
           role: "reference",
@@ -152,16 +269,42 @@ function charts(state: State): ChartSpec[] {
       ],
     },
     {
-      id: "com",
-      title: "Center of mass",
-      xLabel: "time",
-      yLabel: "x_com",
+      id: "drift",
+      title: "Normalized momentum drift",
+      xLabel: "time (s)",
+      yLabel: "drift",
       series: [
         {
-          id: "com",
-          label: "x_com",
-          data: state.history.map((point) => ({ x: point.t, y: point.com })),
+          id: "drift",
+          label: "simulated drift",
+          data: state.history.map((point) => ({ x: point.t, y: point.drift })),
           color: "#0284c7",
+          role: "simulation",
+        },
+        {
+          id: "dataset",
+          label: "dataset reference",
+          data: profile
+            ? benchmarkSeries(profile).map((point) => ({ x: point.x, y: point.y }))
+            : [],
+          color: "#94a3b8",
+          role: "reference",
+          lineStyle: "dashed",
+        },
+      ],
+    },
+    {
+      id: "pulse",
+      title: "Applied force pulse",
+      xLabel: "time (s)",
+      yLabel: "force (N)",
+      series: [
+        {
+          id: "pulse",
+          label: "external force on cart 1",
+          data: state.history.map((point) => ({ x: point.t, y: point.pulse })),
+          color: "#f97316",
+          role: "simulation",
         },
       ],
     },
@@ -170,134 +313,187 @@ function charts(state: State): ChartSpec[] {
 
 export const model: LabModel<Params, State> = {
   id: "v1-ch10-s02-conservation-of-momentum",
-  title: "Isolated Collisions and the Center of Mass",
+  title: "Isolated Collisions and the Center of Mass (SI)",
   summary:
-    "Two carts collide in a 1D track. With no external force, total momentum and center-of-mass motion stay constant.",
+    "Two carts evolve on an explicit track with bumpers, finite-duration forcing, and optional rolling/slope losses. Conservation gates only apply in isolated mode.",
   archetype: "Collision + COM",
   simulation: {
-    fixedDt: 1 / 240,
-    maxSubSteps: 20,
+    fixedDt: 1 / 360,
+    maxSubSteps: 28,
     maxFrameDt: 1 / 20,
   },
   meta: {
     fidelity: "quantitative",
     assumptions: [
-      "1D point-contact collisions with finite cart radius.",
-      "When external force is zero, boundaries are periodic; otherwise reflective.",
-      "Restitution coefficient applies only during closing contact.",
+      "1D finite-size carts with explicit wall contacts.",
+      "External forcing is finite-duration pulse, not persistent ideal acceleration.",
+      "Isolation checks only valid when pulse/loss/slope terms are disabled.",
     ],
     validRange: [
-      "mass1/mass2 in [0.5, 4.0]",
-      "v1/v2 in [-1.2, 1.2]",
-      "restitution in [0, 1]",
-      "external force in [0, 1]",
+      "mass in [0.2, 3.0] kg",
+      "velocity in [-1.5, 1.5] m/s",
+      "restitution in [0.2, 1.0]",
     ],
     sources: getBenchmarkSources("v1-ch10-s02-conservation-of-momentum"),
-    notes:
-      "Momentum drift is reported as normalized drift against initial momentum scale.",
   },
   params: [
     {
       id: "mass1",
       label: "mass 1",
-      min: 0.5,
-      max: 4.0,
-      step: 0.1,
-      default: 1.0,
+      min: 0.2,
+      max: 3.0,
+      step: 0.05,
+      unit: "kg",
+      default: DEFAULT_PARAMS.mass1,
     },
     {
       id: "mass2",
       label: "mass 2",
-      min: 0.5,
-      max: 4.0,
-      step: 0.1,
-      default: 2.0,
+      min: 0.2,
+      max: 3.0,
+      step: 0.05,
+      unit: "kg",
+      default: DEFAULT_PARAMS.mass2,
     },
     {
       id: "v1",
       label: "v1 initial",
-      min: -1.2,
-      max: 1.2,
-      step: 0.05,
-      default: 0.6,
+      min: -1.5,
+      max: 1.5,
+      step: 0.02,
+      unit: "m/s",
+      default: DEFAULT_PARAMS.v1,
     },
     {
       id: "v2",
       label: "v2 initial",
-      min: -1.2,
-      max: 1.2,
-      step: 0.05,
-      default: -0.2,
+      min: -1.5,
+      max: 1.5,
+      step: 0.02,
+      unit: "m/s",
+      default: DEFAULT_PARAMS.v2,
     },
     {
       id: "restitution",
-      label: "restitution e",
-      min: 0,
+      label: "collision restitution",
+      min: 0.2,
       max: 1,
-      step: 0.05,
-      default: 0.9,
+      step: 0.02,
+      default: DEFAULT_PARAMS.restitution,
     },
     {
-      id: "externalForce",
-      label: "external force on cart 1",
+      id: "pulseForce",
+      label: "external pulse force",
       min: 0,
-      max: 1,
+      max: 10,
+      step: 0.1,
+      unit: "N",
+      default: DEFAULT_PARAMS.pulseForce,
+    },
+    {
+      id: "pulseDuration",
+      label: "pulse duration",
+      min: 0,
+      max: 0.6,
+      step: 0.01,
+      unit: "s",
+      default: DEFAULT_PARAMS.pulseDuration,
+      visibleWhen: (params) => (params.pulseForce ?? 0) > 0,
+    },
+    {
+      id: "rollingMu",
+      label: "rolling friction coefficient",
+      group: "advanced",
+      min: 0,
+      max: 0.05,
+      step: 0.001,
+      default: DEFAULT_PARAMS.rollingMu,
+    },
+    {
+      id: "slopeDeg",
+      label: "track slope angle",
+      group: "advanced",
+      min: -2,
+      max: 2,
       step: 0.05,
-      default: 0,
+      unit: "deg",
+      default: DEFAULT_PARAMS.slopeDeg,
+    },
+    {
+      id: "viscousCoeff",
+      label: "viscous drag coefficient",
+      group: "advanced",
+      min: 0,
+      max: 0.6,
+      step: 0.01,
+      unit: "N*s/m",
+      default: DEFAULT_PARAMS.viscousCoeff,
     },
   ],
   create: (params) => buildState(params),
   step: (state, params, dt) => stepState(state, params, dt),
-  draw: (ctx, state, params, size) => {
+  draw: (ctx, state, _params, size) => {
     ctx.clearRect(0, 0, size.width, size.height);
     ctx.fillStyle = "#f8fafc";
     ctx.fillRect(0, 0, size.width, size.height);
     const midY = size.height / 2;
     const mapX = (x: number) =>
-      size.width * 0.1 + ((x + 1.1) / 2.2) * size.width * 0.8;
+      size.width * 0.08 + ((x - TRACK_LEFT) / (TRACK_RIGHT - TRACK_LEFT)) * size.width * 0.84;
 
     ctx.strokeStyle = "#cbd5f5";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(size.width * 0.1, midY);
-    ctx.lineTo(size.width * 0.9, midY);
+    ctx.moveTo(size.width * 0.08, midY);
+    ctx.lineTo(size.width * 0.92, midY);
     ctx.stroke();
 
-    const x1 = mapX(state.x1);
-    const x2 = mapX(state.x2);
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillRect(size.width * 0.08 - 8, midY - 24, 8, 48);
+    ctx.fillRect(size.width * 0.92, midY - 24, 8, 48);
+
+    const x1 = mapX(state.cart1.x);
+    const x2 = mapX(state.cart2.x);
     ctx.fillStyle = "#0f172a";
     ctx.fillRect(x1 - 16, midY - 12, 32, 24);
     ctx.fillStyle = "#f97316";
     ctx.fillRect(x2 - 16, midY - 12, 32, 24);
 
-    const com =
-      (params.mass1 * state.x1 + params.mass2 * state.x2) / (params.mass1 + params.mass2);
+    const com = centerOfMass(state);
     ctx.fillStyle = "#0284c7";
     ctx.beginPath();
     ctx.arc(mapX(com), midY - 24, 5, 0, Math.PI * 2);
     ctx.fill();
   },
-  metrics: (state, params) => metrics(state, params),
+  metrics: (state, params) => metrics(state, normalizeParams(params)),
   charts: (state) => charts(state),
   validate: (state, params) => {
-    const p = params.mass1 * state.v1 + params.mass2 * state.v2;
-    const driftNorm = Math.abs(p - state.p0) / state.pScale;
-    const checks = [
-      numericCheck("momentum-drift", "Momentum drift (normalized)", driftNorm, 0, 1e-2),
-    ];
+    const normalized = normalizeParams(params);
+    const drift = Math.abs(momentum(state) - state.p0) / state.pScale;
+    const residualSigma = datasetResidual(state);
+    const isolated = isIsolated(normalized);
     return statusFromChecks(
-      checks,
-      params.externalForce > 0
-        ? ["External force is active; conservation checks are interpreted as forced-response checks."]
-        : []
+      [
+        numericCheck(
+          "momentum-drift",
+          "Momentum drift (normalized)",
+          drift,
+          0,
+          isolated ? 0.01 : 0.04
+        ),
+        numericCheck("dataset-match", "Dataset residual RMS (sigma)", residualSigma, 0, 2),
+      ],
+      isolated
+        ? []
+        : ["Isolation gate disabled: external pulse or dissipation terms are active."]
     );
   },
 };
 
-export function computeMetrics(params: Params) {
+export function computeMetrics(input: Partial<Params>) {
+  const params = normalizeParams(input);
   const state = buildState(params);
-  for (let i = 0; i < 320; i += 1) {
-    stepState(state, params, 0.02);
+  for (let i = 0; i < 900; i += 1) {
+    stepState(state, params, 1 / 450);
   }
   return metrics(state, params);
 }

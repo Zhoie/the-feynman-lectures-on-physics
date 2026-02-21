@@ -5,130 +5,335 @@ import {
   numericCheck,
   statusFromChecks,
 } from "@/labs/_benchmarks";
+import {
+  benchmarkSeries,
+  getCh10BenchmarkProfile,
+} from "@/labs/_benchmarks/ch10";
+import {
+  createMulberry32,
+  createSensorState,
+  seriesRmsResidual,
+  updateSensor,
+  type SensorState,
+} from "@/labs/v1-ch10-shared/measurement";
+import { integrateBody, resolveWallContact, type Body1D } from "@/labs/v1-ch10-shared/physics";
 
 type Params = {
   mass2: number;
   stretch: number;
+  springDamping: number;
+  sensorHz: number;
+  sensorSmoothing: number;
+  sensorNoise: number;
+  sensorOffset: number;
+};
+
+type HistoryPoint = {
+  t: number;
+  trueF12: number;
+  trueF21: number;
+  measuredF12: number;
+  measuredF21: number;
+  measuredBalance: number;
 };
 
 type State = {
-  x1: number;
-  x2: number;
-  v1: number;
-  v2: number;
+  cart1: Body1D;
+  cart2: Body1D;
   time: number;
-  force12: number;
-  force21: number;
-  history: { t: number; f12: number; f21: number }[];
+  trueF12: number;
+  trueF21: number;
+  measuredF12: number;
+  measuredF21: number;
+  s1: SensorState;
+  s2: SensorState;
+  rand: () => number;
+  history: HistoryPoint[];
 };
 
-const MASS1 = 1;
-const REST_LENGTH = 1.0;
-const SPRING_K = 2.0;
+const MASS1 = 1.0;
+const SPRING_K = 120;
+const REST_LENGTH = 0.6;
+const TRACK_LEFT = -1.0;
+const TRACK_RIGHT = 1.0;
+const HALF_SIZE = 0.06;
+const HISTORY_WINDOW = 260;
+const SAMPLE_INTERVAL = 0.02;
 
-function buildState(params: Params): State {
-  const separation = REST_LENGTH + params.stretch;
+const DEFAULT_PARAMS: Params = {
+  mass2: 1.2,
+  stretch: 0.08,
+  springDamping: 2.0,
+  sensorHz: 120,
+  sensorSmoothing: 0.22,
+  sensorNoise: 0.08,
+  sensorOffset: 0,
+};
+
+const DATASET_ID = "ch10-s01-force-sensor";
+
+function normalizeParams(input?: Partial<Params>): Params {
   return {
-    x1: -0.5 * separation,
-    x2: 0.5 * separation,
-    v1: 0,
-    v2: 0,
+    ...DEFAULT_PARAMS,
+    ...input,
+  };
+}
+
+function buildState(input: Partial<Params>): State {
+  const params = normalizeParams(input);
+  const separation = REST_LENGTH + params.stretch;
+  const cart1: Body1D = {
+    x: -0.5 * separation,
+    v: 0,
+    m: MASS1,
+    halfSize: HALF_SIZE,
+  };
+  const cart2: Body1D = {
+    x: 0.5 * separation,
+    v: 0,
+    m: Math.max(0.2, params.mass2),
+    halfSize: HALF_SIZE,
+  };
+  const rand = createMulberry32(
+    13 +
+      Math.floor(params.mass2 * 1000) * 19 +
+      Math.floor(params.stretch * 10000) * 23
+  );
+  return {
+    cart1,
+    cart2,
     time: 0,
-    force12: 0,
-    force21: 0,
+    trueF12: 0,
+    trueF21: 0,
+    measuredF12: 0,
+    measuredF21: 0,
+    s1: createSensorState(0),
+    s2: createSensorState(0),
+    rand,
     history: [],
   };
 }
 
-function computeForces(state: State) {
-  const r = state.x2 - state.x1;
-  const force = SPRING_K * (r - REST_LENGTH);
-  state.force12 = force;
-  state.force21 = -force;
+function springForce(state: State, params: Params) {
+  const r = state.cart2.x - state.cart1.x;
+  const relV = state.cart2.v - state.cart1.v;
+  const extension = r - REST_LENGTH;
+  return SPRING_K * extension + params.springDamping * relV;
 }
 
-function stepState(state: State, params: Params, dt: number) {
-  computeForces(state);
-  const a1 = state.force12 / MASS1;
-  const a2 = state.force21 / params.mass2;
-  state.v1 += a1 * dt;
-  state.v2 += a2 * dt;
-  state.x1 += state.v1 * dt;
-  state.x2 += state.v2 * dt;
-  state.time += dt;
+function stepState(state: State, input: Partial<Params>, dt: number) {
+  const params = normalizeParams(input);
+  const f12 = springForce(state, params);
+  const f21 = -f12;
+  state.trueF12 = f12;
+  state.trueF21 = f21;
 
-  if (state.time - (state.history.at(-1)?.t ?? -1) > 0.05) {
+  integrateBody(state.cart1, f12, dt);
+  integrateBody(state.cart2, f21, dt);
+
+  resolveWallContact(state.cart1, {
+    left: TRACK_LEFT,
+    right: TRACK_RIGHT,
+    wallRestitution: 0.92,
+    bufferDamping: 0.15,
+  });
+  resolveWallContact(state.cart2, {
+    left: TRACK_LEFT,
+    right: TRACK_RIGHT,
+    wallRestitution: 0.92,
+    bufferDamping: 0.15,
+  });
+
+  const sensorConfig = {
+    sampleHz: params.sensorHz,
+    smoothing: params.sensorSmoothing,
+    noiseStd: params.sensorNoise,
+    offset: params.sensorOffset,
+  };
+  state.measuredF12 = updateSensor(
+    state.s1,
+    state.trueF12,
+    dt,
+    sensorConfig,
+    state.rand
+  );
+  state.measuredF21 = updateSensor(
+    state.s2,
+    state.trueF21,
+    dt,
+    sensorConfig,
+    state.rand
+  );
+
+  state.time += dt;
+  if (
+    state.history.length === 0 ||
+    state.time - state.history[state.history.length - 1].t >= SAMPLE_INTERVAL
+  ) {
+    const measuredBalance = state.measuredF12 + state.measuredF21;
     state.history.push({
       t: state.time,
-      f12: state.force12,
-      f21: state.force21,
+      trueF12: state.trueF12,
+      trueF21: state.trueF21,
+      measuredF12: state.measuredF12,
+      measuredF21: state.measuredF21,
+      measuredBalance,
     });
-    if (state.history.length > 160) state.history.shift();
+    if (state.history.length > HISTORY_WINDOW) {
+      state.history.shift();
+    }
   }
 }
 
+function measuredNorm(state: State) {
+  return (
+    Math.abs(state.measuredF12 + state.measuredF21) /
+    Math.max(1e-6, Math.abs(state.measuredF12) + Math.abs(state.measuredF21))
+  );
+}
+
+function trueNorm(state: State) {
+  return (
+    Math.abs(state.trueF12 + state.trueF21) /
+    Math.max(1e-6, Math.abs(state.trueF12) + Math.abs(state.trueF21))
+  );
+}
+
+function benchmarkResidual(state: State) {
+  const profile = getCh10BenchmarkProfile(DATASET_ID);
+  if (!profile || !state.history.length) {
+    return 0;
+  }
+  const simulated = state.history
+    .filter((point) => point.t <= 0.55)
+    .map((point) => ({ x: point.t, y: point.measuredBalance }));
+  return seriesRmsResidual(simulated, benchmarkSeries(profile));
+}
+
 function metrics(state: State): MetricValue[] {
-  const forceSum = state.force12 + state.force21;
-  const driftNorm =
-    Math.abs(forceSum) /
-    Math.max(1e-9, Math.abs(state.force12) + Math.abs(state.force21));
+  const trueBalance = state.trueF12 + state.trueF21;
+  const measuredBalance = state.measuredF12 + state.measuredF21;
+  const measuredBalanceNorm = measuredNorm(state);
+  const residualSigma = benchmarkResidual(state);
+
   return [
-    {
-      id: "f12",
-      label: "Force on cart 1",
-      value: state.force12,
-      precision: 4,
-    },
-    {
-      id: "f21",
-      label: "Force on cart 2",
-      value: state.force21,
-      precision: 4,
-    },
+    { id: "trueF12", label: "True force on cart 1", value: state.trueF12, precision: 3, unit: "N" },
+    { id: "trueF21", label: "True force on cart 2", value: state.trueF21, precision: 3, unit: "N" },
+    { id: "measuredF12", label: "Measured force on cart 1", value: state.measuredF12, precision: 3, unit: "N" },
+    { id: "measuredF21", label: "Measured force on cart 2", value: state.measuredF21, precision: 3, unit: "N" },
     decorateMetric(
-      { id: "forceSum", label: "F12 + F21", value: forceSum, precision: 6 },
+      {
+        id: "true_force_balance",
+        label: "True F12 + F21",
+        value: trueBalance,
+        precision: 5,
+        unit: "N",
+      },
       0,
-      1e-3
+      1e-4
     ),
     decorateMetric(
       {
-        id: "forceDriftNorm",
-        label: "|F12 + F21| / (|F12| + |F21|)",
-        value: driftNorm,
-        precision: 6,
+        id: "measured_force_balance",
+        label: "Measured F12 + F21",
+        value: measuredBalance,
+        precision: 4,
+        unit: "N",
       },
       0,
-      5e-4
+      0.12
+    ),
+    decorateMetric(
+      {
+        id: "measured_force_balance_norm",
+        label: "|Measured balance| / (|F12| + |F21|)",
+        value: measuredBalanceNorm,
+        precision: 4,
+      },
+      0,
+      0.02
+    ),
+    decorateMetric(
+      {
+        id: "dataset_residual_sigma",
+        label: "Dataset residual (sigma RMS)",
+        value: residualSigma,
+        precision: 3,
+      },
+      0,
+      2
     ),
   ];
 }
 
 function charts(state: State): ChartSpec[] {
+  const profile = getCh10BenchmarkProfile(DATASET_ID);
   return [
     {
       id: "forces",
-      title: "Force pair",
-      xLabel: "time",
-      yLabel: "force",
+      title: "True vs measured force channels",
+      xLabel: "time (s)",
+      yLabel: "force (N)",
       series: [
         {
-          id: "f12",
-          label: "F12",
-          data: state.history.map((point) => ({ x: point.t, y: point.f12 })),
+          id: "true-f12",
+          label: "true F12",
+          data: state.history.map((point) => ({ x: point.t, y: point.trueF12 })),
           color: "#0f172a",
           role: "simulation",
         },
         {
-          id: "f21",
-          label: "F21",
-          data: state.history.map((point) => ({ x: point.t, y: point.f21 })),
-          color: "#0ea5e9",
+          id: "true-f21",
+          label: "true F21",
+          data: state.history.map((point) => ({ x: point.t, y: point.trueF21 })),
+          color: "#0284c7",
           role: "simulation",
         },
         {
-          id: "zero",
-          label: "reference 0",
-          data: state.history.map((point) => ({ x: point.t, y: 0 })),
+          id: "measured-f12",
+          label: "measured F12",
+          data: state.history.map((point) => ({ x: point.t, y: point.measuredF12 })),
+          color: "#f97316",
+          role: "simulation",
+        },
+        {
+          id: "measured-f21",
+          label: "measured F21",
+          data: state.history.map((point) => ({ x: point.t, y: point.measuredF21 })),
+          color: "#0d9488",
+          role: "simulation",
+        },
+      ],
+    },
+    {
+      id: "balance",
+      title: "Measured force-pair balance",
+      xLabel: "time (s)",
+      yLabel: "F12 + F21 (N)",
+      series: [
+        {
+          id: "measured-balance",
+          label: "measured balance",
+          data: state.history.map((point) => ({ x: point.t, y: point.measuredBalance })),
+          color: "#0f172a",
+          role: "simulation",
+        },
+        {
+          id: "true-balance",
+          label: "true balance",
+          data: state.history.map((point) => ({
+            x: point.t,
+            y: point.trueF12 + point.trueF21,
+          })),
+          color: "#0284c7",
+          role: "simulation",
+        },
+        {
+          id: "dataset",
+          label: "dataset reference",
+          data: profile
+            ? benchmarkSeries(profile).map((point) => ({ x: point.x, y: point.y }))
+            : [],
           color: "#94a3b8",
           role: "reference",
           lineStyle: "dashed",
@@ -140,45 +345,97 @@ function charts(state: State): ChartSpec[] {
 
 export const model: LabModel<Params, State> = {
   id: "v1-ch10-s01-newton-s-third-law",
-  title: "Action and Reaction",
+  title: "Action and Reaction (SI Sensor Model)",
   summary:
-    "Two carts are linked by a spring. Cart 1 stays at 1 unit mass; the force sensors always show equal and opposite forces.",
+    "A damped spring pair in SI units with sensor sampling, smoothing, offset, and noise. Compare true force symmetry against measured channels.",
   archetype: "Action-Reaction Pair",
   simulation: {
-    fixedDt: 1 / 240,
-    maxSubSteps: 16,
+    fixedDt: 1 / 300,
+    maxSubSteps: 24,
     maxFrameDt: 1 / 20,
   },
   meta: {
     fidelity: "quantitative",
     assumptions: [
-      "Linear Hooke spring with no delay and no sensor lag.",
-      "1D motion; friction and damping are neglected.",
+      "1D spring-damper coupling between two carts.",
+      "Force sensors are modeled with finite sampling and low-pass response.",
+      "Track walls are buffered, not perfectly rigid.",
     ],
     validRange: [
-      "cart 2 mass in [0.5, 4.0]",
-      "initial spring stretch in [0.05, 0.6]",
+      "cart 2 mass in [0.3, 3.0] kg",
+      "initial stretch in [0.01, 0.20] m",
+      "sensor Hz in [20, 400]",
     ],
     sources: getBenchmarkSources("v1-ch10-s01-newton-s-third-law"),
     notes:
-      "Force balance is validated with absolute and normalized drift checks.",
+      "Quantitative gate uses measured force-pair residual normalized by measured force amplitude.",
   },
   params: [
     {
       id: "mass2",
       label: "cart 2 mass",
-      min: 0.5,
-      max: 4,
-      step: 0.1,
-      default: 1.5,
+      min: 0.3,
+      max: 3.0,
+      step: 0.05,
+      unit: "kg",
+      default: DEFAULT_PARAMS.mass2,
     },
     {
       id: "stretch",
       label: "initial spring stretch",
-      min: 0.05,
-      max: 0.6,
-      step: 0.05,
-      default: 0.25,
+      min: 0.01,
+      max: 0.2,
+      step: 0.005,
+      unit: "m",
+      default: DEFAULT_PARAMS.stretch,
+    },
+    {
+      id: "springDamping",
+      label: "spring damping c",
+      min: 0,
+      max: 8,
+      step: 0.1,
+      unit: "N*s/m",
+      default: DEFAULT_PARAMS.springDamping,
+    },
+    {
+      id: "sensorHz",
+      label: "sensor sample rate",
+      group: "advanced",
+      min: 20,
+      max: 400,
+      step: 5,
+      unit: "Hz",
+      default: DEFAULT_PARAMS.sensorHz,
+    },
+    {
+      id: "sensorSmoothing",
+      label: "sensor smoothing",
+      group: "advanced",
+      min: 0.02,
+      max: 1,
+      step: 0.02,
+      default: DEFAULT_PARAMS.sensorSmoothing,
+    },
+    {
+      id: "sensorNoise",
+      label: "sensor noise std",
+      group: "advanced",
+      min: 0,
+      max: 0.3,
+      step: 0.01,
+      unit: "N",
+      default: DEFAULT_PARAMS.sensorNoise,
+    },
+    {
+      id: "sensorOffset",
+      label: "sensor offset",
+      group: "advanced",
+      min: -0.2,
+      max: 0.2,
+      step: 0.005,
+      unit: "N",
+      default: DEFAULT_PARAMS.sensorOffset,
     },
   ],
   create: (params) => buildState(params),
@@ -189,19 +446,18 @@ export const model: LabModel<Params, State> = {
     ctx.fillRect(0, 0, size.width, size.height);
 
     const midY = size.height / 2;
-    const range = 2.4;
     const mapX = (x: number) =>
-      size.width * 0.1 + ((x + range / 2) / range) * size.width * 0.8;
+      size.width * 0.08 + ((x - TRACK_LEFT) / (TRACK_RIGHT - TRACK_LEFT)) * size.width * 0.84;
 
     ctx.strokeStyle = "#cbd5f5";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(size.width * 0.1, midY);
-    ctx.lineTo(size.width * 0.9, midY);
+    ctx.moveTo(size.width * 0.08, midY);
+    ctx.lineTo(size.width * 0.92, midY);
     ctx.stroke();
 
-    const x1 = mapX(state.x1);
-    const x2 = mapX(state.x2);
+    const x1 = mapX(state.cart1.x);
+    const x2 = mapX(state.cart2.x);
 
     ctx.strokeStyle = "#334155";
     ctx.lineWidth = 2;
@@ -211,57 +467,51 @@ export const model: LabModel<Params, State> = {
     ctx.stroke();
 
     ctx.fillStyle = "#0f172a";
-    ctx.beginPath();
-    ctx.arc(x1, midY, 12, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(x1 - 16, midY - 12, 32, 24);
     ctx.fillStyle = "#f97316";
-    ctx.beginPath();
-    ctx.arc(x2, midY, 12, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(x2 - 16, midY - 12, 32, 24);
 
-    const arrowScale = 28;
-    ctx.strokeStyle = "#2563eb";
-    ctx.lineWidth = 2;
+    const arrowScale = 8;
+    ctx.strokeStyle = "#0284c7";
     ctx.beginPath();
-    ctx.moveTo(x1, midY - 18);
-    ctx.lineTo(x1 + state.force12 * arrowScale, midY - 18);
+    ctx.moveTo(x1, midY - 20);
+    ctx.lineTo(x1 + state.measuredF12 * arrowScale, midY - 20);
     ctx.stroke();
 
     ctx.strokeStyle = "#0d9488";
     ctx.beginPath();
-    ctx.moveTo(x2, midY + 18);
-    ctx.lineTo(x2 + state.force21 * arrowScale, midY + 18);
+    ctx.moveTo(x2, midY + 20);
+    ctx.lineTo(x2 + state.measuredF21 * arrowScale, midY + 20);
     ctx.stroke();
 
     ctx.fillStyle = "#0f172a";
     ctx.font = "12px system-ui";
-    ctx.fillText("F12", x1 + state.force12 * arrowScale, midY - 22);
-    ctx.fillText("F21", x2 + state.force21 * arrowScale, midY + 32);
+    ctx.fillText("measured F12", x1 + state.measuredF12 * arrowScale, midY - 26);
+    ctx.fillText("measured F21", x2 + state.measuredF21 * arrowScale, midY + 34);
   },
   metrics: (state) => metrics(state),
   charts: (state) => charts(state),
   validate: (state) => {
-    const forceSum = state.force12 + state.force21;
-    const driftNorm =
-      Math.abs(forceSum) /
-      Math.max(1e-9, Math.abs(state.force12) + Math.abs(state.force21));
+    const residualSigma = benchmarkResidual(state);
     return statusFromChecks([
-      numericCheck("force-sum", "F12 + F21", forceSum, 0, 1e-3),
+      numericCheck("true-balance", "True force balance norm", trueNorm(state), 0, 1e-3),
       numericCheck(
-        "force-balance-norm",
-        "|F12 + F21| / (|F12| + |F21|)",
-        driftNorm,
+        "measured-balance",
+        "Measured force balance norm",
+        measuredNorm(state),
         0,
-        5e-4
+        0.02
       ),
+      numericCheck("dataset-match", "Dataset residual RMS (sigma)", residualSigma, 0, 2),
     ]);
   },
 };
 
-export function computeMetrics(params: Params) {
+export function computeMetrics(input: Partial<Params>) {
+  const params = normalizeParams(input);
   const state = buildState(params);
-  for (let i = 0; i < 300; i += 1) {
-    stepState(state, params, 0.02);
+  for (let i = 0; i < 720; i += 1) {
+    stepState(state, params, 1 / 360);
   }
   return metrics(state);
 }

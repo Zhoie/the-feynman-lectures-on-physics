@@ -1,63 +1,72 @@
 id: v1-ch10-s02-conservation-of-momentum
-title: Isolated Collisions and the Center of Mass
+title: Isolated Collision Track with Finite Forcing (SI)
 chapter: "10 Conservation of Momentum"
 section: "10-2 Conservation of momentum"
 archetype: collision-com
 summary: >
-  Two carts collide on a track. In the absence of external forces, the total
-  momentum is conserved and the center of mass moves at constant speed.
+  Explicit track + bumper collision model with finite-duration forcing and
+  optional dissipative terms. Isolation gate applies only when forcing/loss are off.
 controls:
   - id: mass1
     label: mass 1
     type: range
-    min: 0.5
-    max: 4.0
-    step: 0.1
-    default: 1.0
+    min: 0.2
+    max: 3.0
+    step: 0.05
+    default: 0.8
   - id: mass2
     label: mass 2
     type: range
-    min: 0.5
-    max: 4.0
-    step: 0.1
-    default: 2.0
+    min: 0.2
+    max: 3.0
+    step: 0.05
+    default: 1.2
   - id: v1
     label: v1 initial
     type: range
-    min: -1.2
-    max: 1.2
-    step: 0.05
-    default: 0.6
+    min: -1.5
+    max: 1.5
+    step: 0.02
+    default: 0.7
   - id: v2
     label: v2 initial
     type: range
-    min: -1.2
-    max: 1.2
-    step: 0.05
-    default: -0.2
+    min: -1.5
+    max: 1.5
+    step: 0.02
+    default: -0.25
   - id: restitution
-    label: restitution e
+    label: collision restitution
+    type: range
+    min: 0.2
+    max: 1.0
+    step: 0.02
+    default: 0.93
+  - id: pulseForce
+    label: external pulse force
     type: range
     min: 0.0
-    max: 1.0
-    step: 0.05
-    default: 0.9
-  - id: externalForce
-    label: external force on cart 1
-    type: range
-    min: 0.0
-    max: 1.0
-    step: 0.05
+    max: 10.0
+    step: 0.1
     default: 0.0
+  - id: pulseDuration
+    label: pulse duration
+    type: range
+    min: 0.0
+    max: 0.6
+    step: 0.01
+    default: 0.18
 metrics:
   - id: momentum
     label: Total momentum
   - id: drift
-    label: Momentum drift
-  - id: com
-    label: Center of mass
+    label: Momentum drift (normalized)
+  - id: com_drift
+    label: Center-of-mass drift
+  - id: dataset_residual_sigma
+    label: Dataset residual (sigma RMS)
 assertions:
-  - when: external force = 0
-    expect: Momentum drift small and COM velocity constant
-  - when: external force > 0
-    expect: Momentum changes over time
+  - when: pulseForce = 0 and losses = 0
+    expect: normalized momentum drift <= 1%
+  - when: pulseForce > 0
+    expect: drift rises above isolated baseline

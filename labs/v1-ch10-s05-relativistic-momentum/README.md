@@ -1,14 +1,14 @@
-# Classical vs Relativistic Momentum
+# Relativistic Momentum in SI Units
 
-This lab compares the classical momentum formula `p = mv` with the relativistic
-expression `p = gamma mv`. At low speeds they are nearly identical, but at high
-speeds the classical formula fails.
+This lab uses physical SI velocity (`m/s`) with `c = 299,792,458 m/s` and
+compares classical momentum `p = mv` against relativistic momentum
+`p = gamma m v`.
 
 ## What you can do
-- Set **v max** to expand the velocity range.
-- Move the **probe velocity** to read off the two momentum values.
-- Change the **mass** to scale the curves.
+- Set **max velocity** and **probe velocity** directly in `m/s`.
+- Change **mass**.
 
 ## What to notice
-- At low speed the relative error is tiny.
-- Near light speed the relativistic momentum grows much faster.
+- The UI reports both SI momentum and derived `beta`.
+- Low-beta error follows the approximation `err ≈ beta^2 / 2`.
+- The ratio curve is compared against curated benchmark points.
