@@ -1,0 +1,13 @@
+id: v2-ch12-s06-illumination-the-uniform-lighting-of-a-plane
+title: Uniform Illumination of a Plane
+chapter: "12"
+section: "12-6"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: illumination_cv
+    label: illumination_cv
+assertions:
+  - when: baseline calibration
+    expect: illumination_cv <= 0.05

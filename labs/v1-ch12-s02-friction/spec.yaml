@@ -1,0 +1,17 @@
+id: v1-ch12-s02-friction
+title: Friction and Dissipation (SI)
+chapter: "12"
+section: "12-2"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: friction_transition_error
+    label: friction_transition_error
+  - id: friction_energy_spike
+    label: friction_energy_spike
+assertions:
+  - when: baseline calibration
+    expect: friction_transition_error <= 0.05
+  - when: baseline calibration
+    expect: friction_energy_spike <= 0.001

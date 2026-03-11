@@ -1,0 +1,13 @@
+id: v2-ch12-s07-the-underlying-unity-of-nature
+title: Underlying Unity of Nature
+chapter: "12"
+section: "12-7"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: unity_rms
+    label: unity_rms
+assertions:
+  - when: baseline calibration
+    expect: unity_rms <= 0.03

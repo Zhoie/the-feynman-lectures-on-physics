@@ -1,0 +1,13 @@
+id: v1-ch12-s01-what-is-a-force
+title: What is a Force? (SI)
+chapter: "12"
+section: "12-1"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: force_law_error
+    label: force_law_error
+assertions:
+  - when: baseline calibration
+    expect: force_law_error <= 0.02

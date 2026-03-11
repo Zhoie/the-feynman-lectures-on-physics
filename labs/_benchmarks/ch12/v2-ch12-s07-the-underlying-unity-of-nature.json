@@ -1,0 +1,38 @@
+{
+  "id": "v2-ch12-s07-the-underlying-unity-of-nature",
+  "source": "Formula-derived Chapter 12 calibration profile",
+  "sourceUrl": "https://www.feynmanlectures.caltech.edu/",
+  "quantity": "normalized_response",
+  "unit": "1",
+  "conversion": "Dimensionless normalized profile generated from analytic baseline for calibration overlays.",
+  "sampling": {
+    "xStart": 0,
+    "xEnd": 1,
+    "nominalStep": 0.2,
+    "window": "Normalized calibration domain"
+  },
+  "x": [
+    0,
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1
+  ],
+  "y": [
+    0.614583,
+    0.598128,
+    0.581998,
+    0.568997,
+    0.561386,
+    0.560486
+  ],
+  "uncertainty": [
+    0.03,
+    0.035,
+    0.04,
+    0.045,
+    0.05,
+    0.055
+  ]
+}

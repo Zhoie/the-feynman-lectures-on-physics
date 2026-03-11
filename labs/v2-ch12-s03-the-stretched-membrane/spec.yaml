@@ -1,0 +1,13 @@
+id: v2-ch12-s03-the-stretched-membrane
+title: Stretched Membrane Boundary Conditions
+chapter: "12"
+section: "12-3"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: boundary_residual
+    label: boundary_residual
+assertions:
+  - when: baseline calibration
+    expect: boundary_residual <= 0.001

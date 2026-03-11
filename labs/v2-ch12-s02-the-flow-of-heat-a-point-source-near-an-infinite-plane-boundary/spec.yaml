@@ -1,0 +1,13 @@
+id: v2-ch12-s02-the-flow-of-heat-a-point-source-near-an-infinite-plane-boundary
+title: Heat Flow Near a Plane Boundary
+chapter: "12"
+section: "12-2"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: boundary_error
+    label: boundary_error
+assertions:
+  - when: baseline calibration
+    expect: boundary_error <= 0.02

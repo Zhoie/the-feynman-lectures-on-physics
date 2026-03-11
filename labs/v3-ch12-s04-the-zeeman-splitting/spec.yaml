@@ -1,0 +1,17 @@
+id: v3-ch12-s04-the-zeeman-splitting
+title: Zeeman Splitting
+chapter: "12"
+section: "12-4"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: zeeman_r2
+    label: zeeman_r2
+  - id: zeeman_slope_error
+    label: zeeman_slope_error
+assertions:
+  - when: baseline calibration
+    expect: zeeman_r2 >= 0.99
+  - when: baseline calibration
+    expect: zeeman_slope_error <= 0.03

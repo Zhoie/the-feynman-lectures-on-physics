@@ -1,0 +1,13 @@
+id: v3-ch12-s06-the-projection-matrix-for-spin-one6
+title: Projection Matrix for Spin One
+chapter: "12"
+section: "12-6"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: projection_error
+    label: projection_error
+assertions:
+  - when: baseline calibration
+    expect: projection_error <= 1e-8

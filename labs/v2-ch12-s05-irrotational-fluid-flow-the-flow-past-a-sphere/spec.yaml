@@ -1,0 +1,13 @@
+id: v2-ch12-s05-irrotational-fluid-flow-the-flow-past-a-sphere
+title: Irrotational Flow Past a Sphere
+chapter: "12"
+section: "12-5"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: normal_velocity_residual
+    label: normal_velocity_residual
+assertions:
+  - when: baseline calibration
+    expect: normal_velocity_residual <= 0.02

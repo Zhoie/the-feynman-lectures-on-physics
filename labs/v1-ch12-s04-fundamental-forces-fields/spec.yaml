@@ -1,0 +1,13 @@
+id: v1-ch12-s04-fundamental-forces-fields
+title: Fundamental Forces and Fields
+chapter: "12"
+section: "12-4"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: inverse_square_residual
+    label: inverse_square_residual
+assertions:
+  - when: baseline calibration
+    expect: inverse_square_residual <= 0.05

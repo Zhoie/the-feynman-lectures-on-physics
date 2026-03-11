@@ -1,0 +1,13 @@
+id: v3-ch12-s02-the-hamiltonian-for-the-ground-state-of-hydrogen
+title: Hydrogen Ground-State Hamiltonian
+chapter: "12"
+section: "12-2"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: hermitian_residual
+    label: hermitian_residual
+assertions:
+  - when: baseline calibration
+    expect: hermitian_residual <= 1e-10

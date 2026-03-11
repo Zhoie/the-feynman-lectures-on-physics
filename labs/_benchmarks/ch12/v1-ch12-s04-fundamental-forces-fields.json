@@ -1,0 +1,38 @@
+{
+  "id": "v1-ch12-s04-fundamental-forces-fields",
+  "source": "Formula-derived Chapter 12 calibration profile",
+  "sourceUrl": "https://www.feynmanlectures.caltech.edu/",
+  "quantity": "normalized_response",
+  "unit": "1",
+  "conversion": "Dimensionless normalized profile generated from analytic baseline for calibration overlays.",
+  "sampling": {
+    "xStart": 0,
+    "xEnd": 1,
+    "nominalStep": 0.2,
+    "window": "Normalized calibration domain"
+  },
+  "x": [
+    0,
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1
+  ],
+  "y": [
+    0.780423,
+    0.71341,
+    0.626685,
+    0.53532,
+    0.455199,
+    0.400247
+  ],
+  "uncertainty": [
+    0.03,
+    0.035,
+    0.04,
+    0.045,
+    0.05,
+    0.055
+  ]
+}

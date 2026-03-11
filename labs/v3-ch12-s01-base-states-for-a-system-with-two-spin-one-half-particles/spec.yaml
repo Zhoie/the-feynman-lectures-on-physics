@@ -1,0 +1,13 @@
+id: v3-ch12-s01-base-states-for-a-system-with-two-spin-one-half-particles
+title: Base States for Two Spin-1/2 Particles
+chapter: "12"
+section: "12-1"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: orthonormal_error
+    label: orthonormal_error
+assertions:
+  - when: baseline calibration
+    expect: orthonormal_error <= 1e-8

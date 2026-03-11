@@ -1,0 +1,13 @@
+id: v3-ch12-s05-the-states-in-a-magnetic-field
+title: States in a Magnetic Field
+chapter: "12"
+section: "12-5"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: norm_drift
+    label: norm_drift
+assertions:
+  - when: baseline calibration
+    expect: norm_drift <= 0.001

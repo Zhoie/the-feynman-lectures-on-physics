@@ -129,4 +129,270 @@ export const benchmarkSources: SourceMap = {
       status: "pending",
     },
   ],
+  "v1-ch12-s01-what-is-a-force": [
+    {
+      label: "Feynman Lectures V1 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/I_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v1-ch12-s02-friction": [
+    {
+      label: "Feynman Lectures V1 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/I_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v1-ch12-s03-molecular-forces": [
+    {
+      label: "Feynman Lectures V1 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/I_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v1-ch12-s04-fundamental-forces-fields": [
+    {
+      label: "Feynman Lectures V1 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/I_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v1-ch12-s05-pseudo-forces": [
+    {
+      label: "Feynman Lectures V1 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/I_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v1-ch12-s06-nuclear-forces": [
+    {
+      label: "Feynman Lectures V1 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/I_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v2-ch12-s01-the-same-equations-have-the-same-solutions": [
+    {
+      label: "Feynman Lectures V2 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/II_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v2-ch12-s02-the-flow-of-heat-a-point-source-near-an-infinite-plane-boundary": [
+    {
+      label: "Feynman Lectures V2 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/II_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v2-ch12-s03-the-stretched-membrane": [
+    {
+      label: "Feynman Lectures V2 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/II_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v2-ch12-s04-the-diffusion-of-neutrons-a-uniform-spherical-source-in-a-homogeneous-medium": [
+    {
+      label: "Feynman Lectures V2 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/II_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v2-ch12-s05-irrotational-fluid-flow-the-flow-past-a-sphere": [
+    {
+      label: "Feynman Lectures V2 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/II_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v2-ch12-s06-illumination-the-uniform-lighting-of-a-plane": [
+    {
+      label: "Feynman Lectures V2 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/II_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v2-ch12-s07-the-underlying-unity-of-nature": [
+    {
+      label: "Feynman Lectures V2 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/II_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v3-ch12-s01-base-states-for-a-system-with-two-spin-one-half-particles": [
+    {
+      label: "Feynman Lectures V3 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/III_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v3-ch12-s02-the-hamiltonian-for-the-ground-state-of-hydrogen": [
+    {
+      label: "Feynman Lectures V3 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/III_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v3-ch12-s03-the-energy-levels": [
+    {
+      label: "Feynman Lectures V3 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/III_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v3-ch12-s04-the-zeeman-splitting": [
+    {
+      label: "Feynman Lectures V3 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/III_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v3-ch12-s05-the-states-in-a-magnetic-field": [
+    {
+      label: "Feynman Lectures V3 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/III_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
+  "v3-ch12-s06-the-projection-matrix-for-spin-one6": [
+    {
+      label: "Feynman Lectures V3 Chapter 12 analytic baseline",
+      url: "https://www.feynmanlectures.caltech.edu/III_12.html",
+      kind: "formula",
+      status: "ready",
+    },
+    {
+      label: "Chapter 12 public dataset (curation pending)",
+      url: "/labs/_benchmarks/README.md#pending-datasets",
+      kind: "dataset",
+      status: "pending",
+    },
+  ],
 };

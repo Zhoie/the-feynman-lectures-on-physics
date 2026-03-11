@@ -1,0 +1,13 @@
+id: v1-ch12-s05-pseudo-forces
+title: Pseudo Forces in Accelerated Frames
+chapter: "12"
+section: "12-5"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: pseudo_equilibrium_residual
+    label: pseudo_equilibrium_residual
+assertions:
+  - when: baseline calibration
+    expect: pseudo_equilibrium_residual <= 0.03

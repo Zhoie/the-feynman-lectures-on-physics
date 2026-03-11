@@ -1,0 +1,13 @@
+id: v1-ch12-s06-nuclear-forces
+title: Short-Range Nuclear Force Proxy
+chapter: "12"
+section: "12-6"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: nuclear_short_range_mismatch
+    label: nuclear_short_range_mismatch
+assertions:
+  - when: baseline calibration
+    expect: nuclear_short_range_mismatch <= 0.1

@@ -1,0 +1,38 @@
+{
+  "id": "v3-ch12-s01-base-states-for-a-system-with-two-spin-one-half-particles",
+  "source": "Formula-derived Chapter 12 calibration profile",
+  "sourceUrl": "https://www.feynmanlectures.caltech.edu/",
+  "quantity": "normalized_response",
+  "unit": "1",
+  "conversion": "Dimensionless normalized profile generated from analytic baseline for calibration overlays.",
+  "sampling": {
+    "xStart": 0,
+    "xEnd": 1,
+    "nominalStep": 0.2,
+    "window": "Normalized calibration domain"
+  },
+  "x": [
+    0,
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1
+  ],
+  "y": [
+    0.581129,
+    0.58547,
+    0.592337,
+    0.600536,
+    0.608642,
+    0.615245
+  ],
+  "uncertainty": [
+    0.03,
+    0.035,
+    0.04,
+    0.045,
+    0.05,
+    0.055
+  ]
+}

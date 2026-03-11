@@ -1,0 +1,13 @@
+id: v2-ch12-s01-the-same-equations-have-the-same-solutions
+title: Same Equations, Same Solutions
+chapter: "12"
+section: "12-1"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: shape_overlap
+    label: shape_overlap
+assertions:
+  - when: baseline calibration
+    expect: shape_overlap >= 0.97

@@ -1,0 +1,13 @@
+id: v1-ch12-s03-molecular-forces
+title: Molecular Force Equilibrium
+chapter: "12"
+section: "12-3"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: molecular_equilibrium_residual
+    label: molecular_equilibrium_residual
+assertions:
+  - when: baseline calibration
+    expect: molecular_equilibrium_residual <= 0.05

@@ -1,0 +1,13 @@
+id: v2-ch12-s04-the-diffusion-of-neutrons-a-uniform-spherical-source-in-a-homogeneous-medium
+title: Neutron Diffusion in Spherical Geometry
+chapter: "12"
+section: "12-4"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: radial_residual
+    label: radial_residual
+assertions:
+  - when: baseline calibration
+    expect: radial_residual <= 0.05

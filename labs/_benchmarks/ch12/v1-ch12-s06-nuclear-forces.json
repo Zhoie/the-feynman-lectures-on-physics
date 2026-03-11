@@ -1,0 +1,38 @@
+{
+  "id": "v1-ch12-s06-nuclear-forces",
+  "source": "Formula-derived Chapter 12 calibration profile",
+  "sourceUrl": "https://www.feynmanlectures.caltech.edu/",
+  "quantity": "normalized_response",
+  "unit": "1",
+  "conversion": "Dimensionless normalized profile generated from analytic baseline for calibration overlays.",
+  "sampling": {
+    "xStart": 0,
+    "xEnd": 1,
+    "nominalStep": 0.2,
+    "window": "Normalized calibration domain"
+  },
+  "x": [
+    0,
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1
+  ],
+  "y": [
+    0.472156,
+    0.473653,
+    0.497111,
+    0.538454,
+    0.590494,
+    0.644188
+  ],
+  "uncertainty": [
+    0.03,
+    0.035,
+    0.04,
+    0.045,
+    0.05,
+    0.055
+  ]
+}

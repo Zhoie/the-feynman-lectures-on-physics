@@ -1,0 +1,13 @@
+id: v3-ch12-s03-the-energy-levels
+title: Hydrogen Energy Levels
+chapter: "12"
+section: "12-3"
+archetype: quantitative
+summary: >
+  Chapter 12 quantitative lab with SI/normalized calibration gate.
+metrics:
+  - id: energy_level_residual
+    label: energy_level_residual
+assertions:
+  - when: baseline calibration
+    expect: energy_level_residual <= 0.02
