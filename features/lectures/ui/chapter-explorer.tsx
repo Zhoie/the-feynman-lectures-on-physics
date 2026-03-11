@@ -40,6 +40,8 @@ export function ChapterExplorer({
 
   const activeCard =
     panels.find((panel) => panel.id === active) ?? panels[0];
+  const activePanelId = `${chapter.slug}-${activeCard?.id ?? defaultPanel}-panel`;
+  const statusId = `${chapter.slug}-panel-status`;
 
   const updatePanel = (panelId: ChapterPanel["id"]) => {
     setActive(panelId);
@@ -114,15 +116,16 @@ export function ChapterExplorer({
         </motion.div>
       </div>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2" aria-busy={isPending}>
           {panels.map((panel) => (
             <button
               key={panel.id}
               onClick={() => updatePanel(panel.id)}
-              className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.3em] transition ${
+              aria-describedby={statusId}
+              className={`rounded-full border px-4 py-2 text-[11px] uppercase tracking-[0.28em] transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] sm:text-xs ${
                 active === panel.id
-                  ? "border-[color:var(--accent)] text-[color:var(--accent)]"
-                  : "border-slate-900/10 text-slate-500 hover:border-slate-900/30"
+                  ? "border-[color:var(--accent)] bg-white/80 text-[color:var(--accent)] shadow-sm"
+                  : "border-slate-900/10 text-slate-500 hover:border-slate-900/30 hover:bg-white/70"
               }`}
               type="button"
               aria-pressed={active === panel.id}
@@ -130,15 +133,19 @@ export function ChapterExplorer({
               {panel.label}
             </button>
           ))}
-          {isPending ? (
-            <span className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              Updating
-            </span>
-          ) : null}
+          <span
+            id={statusId}
+            role="status"
+            aria-live="polite"
+            className="text-[11px] uppercase tracking-[0.28em] text-slate-400 sm:text-xs"
+          >
+            {isPending ? "Updating panel…" : activeCard?.title}
+          </span>
         </div>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeCard?.id}
+            id={activePanelId}
             variants={panelVariants}
             initial="hidden"
             animate="show"

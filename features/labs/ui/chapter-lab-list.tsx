@@ -41,7 +41,7 @@ export function ChapterLabList({ sections }: ChapterLabListProps) {
               {available ? (
                 <Link
                   href={`/lab/${section.labId}`}
-                  className="rounded-full border border-slate-900/10 px-4 py-2 text-xs font-semibold text-slate-700 hover:border-slate-900/30"
+                  className="rounded-full border border-slate-900/10 px-4 py-2 text-xs font-semibold text-slate-700 transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-slate-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]"
                 >
                   Open Lab
                 </Link>

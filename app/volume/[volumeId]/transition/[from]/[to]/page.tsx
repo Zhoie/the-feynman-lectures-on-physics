@@ -80,7 +80,7 @@ export default async function TransitionPage({
   }
 
   return (
-    <main className="min-h-screen">
+    <main id="main-content" className="min-h-screen">
       <section className="mx-auto flex max-w-5xl justify-end px-6 pt-10">
         <ShareBar label="Share transition" />
       </section>

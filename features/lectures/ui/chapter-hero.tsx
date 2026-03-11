@@ -35,11 +35,11 @@ export function ChapterHero({
           An interactive chapter brief with key ideas, experiments, and the
           minimal math scaffold that frames the lecture.
         </p>
-        <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.3em] text-slate-500">
-          <span className="rounded-full border border-slate-900/10 px-4 py-2">
+        <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+          <span className="max-w-full rounded-full border border-slate-900/10 bg-white/60 px-4 py-2 font-medium leading-5 tracking-[0.02em] text-slate-600">
             {volume.subtitle}
           </span>
-          <span className="rounded-full border border-[color:var(--accent)] px-4 py-2 text-[color:var(--accent)]">
+          <span className="rounded-full border border-[color:var(--accent)] bg-white/60 px-4 py-2 uppercase tracking-[0.28em] text-[color:var(--accent)]">
             Motion-guided focus
           </span>
         </div>

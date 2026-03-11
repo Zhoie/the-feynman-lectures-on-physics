@@ -35,10 +35,10 @@ export function HomeHero({ primaryHref }: { primaryHref: string }) {
       >
         <Link
           href={primaryHref}
-          className="group inline-flex items-center gap-3 rounded-full border border-slate-900/10 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-900/30 hover:shadow-md"
+          className="group inline-flex items-center gap-3 rounded-full border border-slate-900/10 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm backdrop-blur transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-slate-900/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]"
         >
           Start with Volume I
-          <span className="text-slate-500 transition group-hover:translate-x-1">
+          <span className="text-slate-500 transition duration-200 group-hover:translate-x-1 group-focus-visible:translate-x-1">
             →
           </span>
         </Link>

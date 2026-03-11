@@ -18,6 +18,8 @@ export function VolumeSearch({
   const [isPending, startTransition] = useTransition();
   const [query, setQuery] = useState(initialQuery);
   const inputId = "volume-chapter-search";
+  const resultsId = `${inputId}-results`;
+  const statusId = `${inputId}-status`;
 
   useEffect(() => {
     setQuery(initialQuery);
@@ -40,7 +42,7 @@ export function VolumeSearch({
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" aria-busy={isPending}>
       <label
         htmlFor={inputId}
         className="text-xs uppercase tracking-[0.3em] text-slate-400"
@@ -55,16 +57,23 @@ export function VolumeSearch({
           onChange={(event) => updateQuery(event.target.value)}
           placeholder="Search by title or chapter number"
           maxLength={60}
-          className="w-full flex-1 rounded-full border border-slate-900/10 bg-white/90 px-5 py-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-slate-900/30 md:min-w-[320px]"
+          aria-describedby={`${resultsId} ${statusId}`}
+          className="w-full flex-1 rounded-full border border-slate-900/10 bg-white/90 px-5 py-3 text-sm text-slate-700 shadow-sm transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] placeholder:text-slate-400 focus-visible:border-slate-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] md:min-w-[320px]"
         />
-        <div className="rounded-full border border-slate-900/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-slate-500">
-          {resultsCount} of {totalCount}
+        <div
+          id={resultsId}
+          className="rounded-full border border-slate-900/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-slate-500"
+        >
+          Showing {resultsCount} of {totalCount}
         </div>
-        {isPending ? (
-          <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
-            Updating
-          </div>
-        ) : null}
+        <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
+          Results update as you type
+        </div>
+        <div id={statusId} role="status" aria-live="polite" className="sr-only">
+          {isPending
+            ? "Updating chapter list."
+            : `Showing ${resultsCount} of ${totalCount} chapters.`}
+        </div>
       </div>
     </div>
   );

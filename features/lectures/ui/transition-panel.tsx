@@ -70,13 +70,13 @@ export function TransitionPanel({
           <div className="flex flex-wrap gap-4">
             <Link
               href={`/volume/${volume.id}/${from.slug}`}
-              className="rounded-full border border-slate-900/10 px-5 py-3 text-xs uppercase tracking-[0.3em] text-slate-500 transition hover:border-slate-900/30"
+              className="rounded-full border border-slate-900/10 px-5 py-3 text-center text-[11px] uppercase tracking-[0.28em] text-slate-500 transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-slate-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] sm:text-xs sm:whitespace-nowrap"
             >
               Back to {from.label}
             </Link>
             <Link
               href={`/volume/${volume.id}/${to.slug}`}
-              className="rounded-full border border-[color:var(--accent)] bg-white/80 px-5 py-3 text-xs uppercase tracking-[0.3em] text-[color:var(--accent)] shadow-sm transition hover:-translate-y-0.5"
+              className="rounded-full border border-[color:var(--accent)] bg-white/80 px-5 py-3 text-center text-[11px] uppercase tracking-[0.28em] text-[color:var(--accent)] shadow-sm transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] sm:text-xs sm:whitespace-nowrap"
             >
               Enter {to.label}
             </Link>

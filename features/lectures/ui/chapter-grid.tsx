@@ -30,26 +30,30 @@ export function ChapterGrid({
   accent: string;
 }) {
   const reduceMotion = useReducedMotion();
+  const shouldAnimateEntrance = !reduceMotion && chapters.length <= 24;
 
   return (
     <section className="mx-auto max-w-6xl px-6 pb-24">
       <motion.ul
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
+        variants={shouldAnimateEntrance ? containerVariants : undefined}
+        initial={shouldAnimateEntrance ? "hidden" : false}
+        animate={shouldAnimateEntrance ? "show" : undefined}
         className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
         style={{ "--accent": accent } as CSSProperties}
       >
         {chapters.map((chapter) => (
-          <motion.li key={chapter.slug} variants={itemVariants}>
+          <motion.li
+            key={chapter.slug}
+            variants={shouldAnimateEntrance ? itemVariants : undefined}
+          >
             <Link
               href={`/volume/${volumeId}/${chapter.slug}`}
-              className="group block h-full"
+              className="group block h-full focus-visible:outline-none"
             >
               <motion.div
                 whileHover={reduceMotion ? {} : { y: -4 }}
                 whileTap={reduceMotion ? {} : { scale: 0.98 }}
-                className="relative flex h-full flex-col gap-3 rounded-xl border border-slate-900/10 bg-white/75 p-4 shadow-sm backdrop-blur transition-shadow group-hover:shadow-md"
+                className="relative flex h-full flex-col gap-3 rounded-xl border border-slate-900/10 bg-white/75 p-4 shadow-sm backdrop-blur transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:shadow-md group-focus-visible:-translate-y-1 group-focus-visible:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-[color:var(--accent)]/30 group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-[var(--paper)]"
               >
                 <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
                   {chapter.label}

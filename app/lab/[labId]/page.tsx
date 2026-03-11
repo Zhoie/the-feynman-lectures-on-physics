@@ -31,7 +31,7 @@ export default async function LabPage({
   if (!View) notFound();
 
   return (
-    <main className="min-h-screen">
+    <main id="main-content" className="min-h-screen">
       <section className="mx-auto flex max-w-6xl flex-col gap-4 px-6 pb-12 pt-16">
         <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
           {section.volumeId.replace("-", " ")} · Ch. {section.chapterIndex} ·{" "}

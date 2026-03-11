@@ -114,7 +114,7 @@ export default async function ChapterPage({
   const sections = getChapterSections(data.volume.id, data.current.index);
 
   return (
-    <main className="min-h-screen">
+    <main id="main-content" className="min-h-screen">
       <ChapterHero volume={data.volume} chapter={data.current} />
       <section className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 pb-8">
         <ShareBar label="Share chapter" />

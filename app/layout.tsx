@@ -64,6 +64,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${display.variable} ${body.variable} ${mono.variable}`}>
+        <a
+          href="#main-content"
+          className="sr-only rounded-full bg-white/95 px-4 py-2 text-sm font-medium text-slate-900 shadow-lg focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:outline-none focus:ring-2 focus:ring-slate-900/15 focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
+        >
+          Skip to content
+        </a>
         <div className="fixed inset-0 -z-10 overflow-hidden">
           <div className="absolute inset-0 bg-[#f7f2ea]" />
           <div className="absolute inset-0 opacity-60 [background-image:radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_45%),radial-gradient(circle_at_80%_10%,rgba(14,165,233,0.18),transparent_40%),radial-gradient(circle_at_70%_80%,rgba(16,185,129,0.18),transparent_45%)]" />

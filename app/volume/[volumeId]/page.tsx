@@ -98,7 +98,7 @@ export default async function VolumePage({
   const firstChapter = volume.chapters[0];
 
   return (
-    <main className="min-h-screen">
+    <main id="main-content" className="min-h-screen">
       <VolumeHero volume={volume} />
       <section
         className="mx-auto flex max-w-6xl flex-col gap-6 px-6 pb-8"
@@ -113,7 +113,7 @@ export default async function VolumePage({
               {firstChapter ? (
                 <Link
                   href={`/volume/${volume.id}/${firstChapter.slug}`}
-                  className="rounded-full border border-[color:var(--accent)] bg-white/80 px-4 py-2 text-[color:var(--accent)] shadow-sm transition hover:-translate-y-0.5"
+                  className="rounded-full border border-[color:var(--accent)] bg-white/80 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.28em] text-[color:var(--accent)] shadow-sm transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] sm:text-xs"
                 >
                   Start with {firstChapter.label}
                 </Link>
@@ -137,8 +137,12 @@ export default async function VolumePage({
       />
       {chapters.length === 0 ? (
         <section className="mx-auto max-w-6xl px-6 pb-12">
-          <div className="rounded-2xl border border-dashed border-slate-900/20 bg-white/70 p-6 text-sm text-slate-500">
-            No chapters match "{query}". Try a different phrase or remove the
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-2xl border border-dashed border-slate-900/20 bg-white/70 p-6 text-sm text-slate-500"
+          >
+            No chapters match “{query}”. Try a different phrase or remove the
             filter.
           </div>
         </section>

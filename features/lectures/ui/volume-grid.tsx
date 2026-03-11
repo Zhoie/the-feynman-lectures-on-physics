@@ -33,14 +33,17 @@ export function VolumeGrid({ volumes }: { volumes: Volume[] }) {
       >
         {volumes.map((volume) => (
           <motion.div key={volume.id} variants={itemVariants}>
-            <Link href={`/volume/${volume.id}`} className="group block h-full">
+            <Link
+              href={`/volume/${volume.id}`}
+              className="group block h-full focus-visible:outline-none"
+            >
               <motion.div
                 whileHover={reduceMotion ? {} : { y: -6 }}
                 whileTap={reduceMotion ? {} : { scale: 0.98 }}
-                className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-slate-900/10 bg-white/80 p-6 shadow-sm backdrop-blur transition-shadow group-hover:shadow-lg"
+                className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-slate-900/10 bg-white/80 p-6 shadow-sm backdrop-blur transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:shadow-lg group-focus-visible:-translate-y-1 group-focus-visible:shadow-lg group-focus-visible:ring-2 group-focus-visible:ring-[color:var(--accent)]/35 group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-[var(--paper)]"
                 style={{ "--accent": volume.accent } as CSSProperties}
               >
-                <div className="absolute inset-0 opacity-0 transition group-hover:opacity-100 [background-image:radial-gradient(circle_at_20%_20%,color-mix(in_srgb,var(--accent)_25%,transparent),transparent_60%)]" />
+                <div className="absolute inset-0 opacity-0 transition duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 [background-image:radial-gradient(circle_at_20%_20%,color-mix(in_srgb,var(--accent)_25%,transparent),transparent_60%)]" />
                 <div className="relative flex flex-col gap-5">
                   <div className="text-xs uppercase tracking-[0.4em] text-[color:var(--accent)]">
                     {volume.title}
