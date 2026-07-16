@@ -9,6 +9,13 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["labs/**/*.spec.ts", "features/labs/**/*.spec.ts"],
+    maxWorkers: 4,
+    testTimeout: 15_000,
+    include: [
+      "core/**/*.spec.ts",
+      "labs/**/*.spec.ts",
+      "features/labs/**/*.spec.ts",
+      "features/lectures/**/*.spec.ts",
+    ],
   },
 });

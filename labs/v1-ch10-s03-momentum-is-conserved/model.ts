@@ -120,8 +120,9 @@ function kineticEnergy(state: State) {
 
 function analysisWindow(state: State) {
   if (!state.history.length) return state.history;
-  if (state.firstWallContactTime == null) return state.history;
-  return state.history.filter((point) => point.t <= state.firstWallContactTime);
+  const firstWallContactTime = state.firstWallContactTime;
+  if (firstWallContactTime == null) return state.history;
+  return state.history.filter((point) => point.t <= firstWallContactTime);
 }
 
 function windowMomentumDrift(state: State) {
@@ -147,9 +148,12 @@ function windowComDriftNorm(state: State) {
 function datasetResidual(state: State) {
   const profile = getCh10BenchmarkProfile(DATASET_ID);
   if (!profile) return 0;
-  const window = analysisWindow(state)
-    .filter((point) => point.t <= 0.35)
-    .map((point) => ({ x: point.t, y: Math.abs(point.comDrift) }));
+  const window: Array<{ x: number; y: number }> = [];
+  for (const point of analysisWindow(state)) {
+    if (point.t <= 0.35) {
+      window.push({ x: point.t, y: Math.abs(point.comDrift) });
+    }
+  }
   return seriesRmsResidual(window, benchmarkSeries(profile));
 }
 

@@ -283,9 +283,12 @@ function metrics(state: State, params: Params): MetricValue[] {
 }
 
 function charts(state: State): ChartSpec[] {
-  const speeds = state.particles
-    .filter((p) => !p.isTracer)
-    .map((p) => Math.sqrt(p.vx * p.vx + p.vy * p.vy));
+  const speeds: number[] = [];
+  for (const particle of state.particles) {
+    if (!particle.isTracer) {
+      speeds.push(Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy));
+    }
+  }
   const maxSpeed = Math.max(...speeds, 1);
   const bins = 20;
   const hist = new Array(bins).fill(0);

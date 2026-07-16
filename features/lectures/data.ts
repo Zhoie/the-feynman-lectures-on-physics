@@ -6,7 +6,7 @@ const volumeDefinitions = [
     title: "Volume I",
     subtitle: "Mainly Mechanics, Radiation, and Heat",
     chapterRange: "Ch. 1-52",
-    accent: "#f59e0b",
+    accent: "#9f4609",
     summary:
       "Foundations of motion, energy, waves, heat, and the first contact with relativity.",
     chapterTitles: [
@@ -69,7 +69,7 @@ const volumeDefinitions = [
     title: "Volume II",
     subtitle: "Mainly Electromagnetism and Matter",
     chapterRange: "Ch. 1-41",
-    accent: "#10b981",
+    accent: "#047857",
     summary:
       "Fields, forces, circuits, magnetism, and the material response of matter.",
     chapterTitles: [
@@ -121,7 +121,7 @@ const volumeDefinitions = [
     title: "Volume III",
     subtitle: "Quantum Mechanics",
     chapterRange: "Ch. 1-21",
-    accent: "#0ea5e9",
+    accent: "#0369a1",
     summary:
       "Quantum behavior, amplitudes, spin, atoms, and condensed matter sketches.",
     chapterTitles: [

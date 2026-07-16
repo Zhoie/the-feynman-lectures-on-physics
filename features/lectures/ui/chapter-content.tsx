@@ -16,7 +16,7 @@ export function ChapterContentSection({
       className="mx-auto grid max-w-6xl gap-6 px-6 pb-12 lg:grid-cols-[2fr_1fr]"
       style={{ "--accent": volume.accent } as CSSProperties}
     >
-      <div className="rounded-3xl border border-slate-900/10 bg-white/85 p-8 shadow-sm backdrop-blur">
+      <div className="rounded-3xl border border-slate-900/10 bg-white/85 p-6 sm:p-8">
         <div className="text-xs uppercase tracking-[0.4em] text-slate-400">
           Field Notes
         </div>
@@ -41,7 +41,7 @@ export function ChapterContentSection({
         </div>
       </div>
       <div className="grid gap-4">
-        <div className="rounded-2xl border border-slate-900/10 bg-white/80 p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-900/10 bg-white/80 p-5">
           <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
             Experiments
           </div>
@@ -54,7 +54,7 @@ export function ChapterContentSection({
             ))}
           </ul>
         </div>
-        <div className="rounded-2xl border border-slate-900/10 bg-white/80 p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-900/10 bg-white/80 p-5">
           <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
             Math Focus
           </div>
@@ -67,7 +67,7 @@ export function ChapterContentSection({
             ))}
           </ul>
         </div>
-        <div className="rounded-2xl border border-slate-900/10 bg-white/80 p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-900/10 bg-white/80 p-5">
           <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
             Modern Echo
           </div>

@@ -78,14 +78,14 @@ models retain their existing validation metadata and benchmark comparisons.
 
 ## Typography and Interface
 
-Replace the current three-family font payload with two variable families:
+Replace the current three-family font payload with two system-resident stacks:
 
-- Source Serif 4 for lecture and experiment headings
-- Source Sans 3 for reading text, controls, labels, and numbers
+- Iowan Old Style, Palatino, or Georgia for lecture and experiment headings
+- the platform system sans serif for reading, controls, labels, and numbers
 
-Use the system monospace stack only where fixed-width numeric alignment is
-needed. Reduce extreme letter spacing, raise the smallest text size, and use
-sentence case for explanatory labels.
+This removes webfont downloads entirely. Use the system monospace stack only
+where fixed-width numeric alignment is needed. Reduce extreme letter spacing,
+raise the smallest text size, and use sentence case for explanatory labels.
 
 Recompose the experiment surfaces:
 

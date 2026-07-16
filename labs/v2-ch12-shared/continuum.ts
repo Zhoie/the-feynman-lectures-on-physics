@@ -71,11 +71,13 @@ function defaultParams(controls: ControlSpec[]) {
   }, {});
 }
 
-function normalizeParams(input: Partial<Params> | undefined, controls: ControlSpec[]) {
-  return {
-    ...defaultParams(controls),
-    ...(input ?? {}),
-  };
+function normalizeParams(input: Partial<Params> | undefined, controls: ControlSpec[]): Params {
+  const params = defaultParams(controls);
+  if (!input) return params;
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined) params[key] = value;
+  }
+  return params;
 }
 
 function checkMetric(check: CheckDef): MetricValue {

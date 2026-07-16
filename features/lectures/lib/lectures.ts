@@ -1,11 +1,11 @@
 import { volumes } from "../data";
-import type { Chapter, Volume } from "../data";
+import type { Volume } from "../data";
 
 export function getVolumeById(volumeId: string) {
   return volumes.find((volume) => volume.id === volumeId) ?? null;
 }
 
-export function getChapterBySlug(volume: Volume, slug: string) {
+function getChapterBySlug(volume: Volume, slug: string) {
   const index = volume.chapters.findIndex((chapter) => chapter.slug === slug);
   if (index === -1) return null;
   return {
@@ -14,7 +14,7 @@ export function getChapterBySlug(volume: Volume, slug: string) {
   };
 }
 
-export function getChapter(volumeId: string, chapterSlug: string) {
+function getChapter(volumeId: string, chapterSlug: string) {
   const volume = getVolumeById(volumeId);
   if (!volume) return null;
   const result = getChapterBySlug(volume, chapterSlug);
@@ -73,8 +73,4 @@ export function getAllTransitionParams() {
       to: volume.chapters[index + 1].slug,
     }))
   );
-}
-
-export function getChapterOrder(volume: Volume, chapter: Chapter) {
-  return `${volume.title} ${chapter.label}`;
 }

@@ -1,24 +1,6 @@
-"use client";
-
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import type { CSSProperties } from "react";
 import type { Chapter } from "../data";
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.04,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
-};
 
 export function ChapterGrid({
   volumeId,
@@ -29,46 +11,34 @@ export function ChapterGrid({
   chapters: Chapter[];
   accent: string;
 }) {
-  const reduceMotion = useReducedMotion();
-  const shouldAnimateEntrance = !reduceMotion && chapters.length <= 24;
-
   return (
     <section className="mx-auto max-w-6xl px-6 pb-24">
-      <motion.ul
-        variants={shouldAnimateEntrance ? containerVariants : undefined}
-        initial={shouldAnimateEntrance ? "hidden" : false}
-        animate={shouldAnimateEntrance ? "show" : undefined}
+      <ul
         className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
         style={{ "--accent": accent } as CSSProperties}
       >
         {chapters.map((chapter) => (
-          <motion.li
-            key={chapter.slug}
-            variants={shouldAnimateEntrance ? itemVariants : undefined}
-          >
+          <li key={chapter.slug}>
             <Link
               href={`/volume/${volumeId}/${chapter.slug}`}
+              prefetch={false}
               className="group block h-full focus-visible:outline-none"
             >
-              <motion.div
-                whileHover={reduceMotion ? {} : { y: -4 }}
-                whileTap={reduceMotion ? {} : { scale: 0.98 }}
-                className="relative flex h-full flex-col gap-3 rounded-xl border border-slate-900/10 bg-white/75 p-4 shadow-sm backdrop-blur transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:shadow-md group-focus-visible:-translate-y-1 group-focus-visible:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-[color:var(--accent)]/30 group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-[var(--paper)]"
-              >
-                <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
+              <div className="relative flex h-full flex-col gap-3 rounded-xl border border-slate-900/10 bg-white/75 p-4 transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:border-slate-900/20 group-hover:shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] group-focus-visible:ring-2 group-focus-visible:ring-[color:var(--accent)]/30 group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-[var(--paper)]">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                   {chapter.label}
                 </div>
                 <div className="text-lg font-semibold text-slate-900">
                   {chapter.title}
                 </div>
-                <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent)]">
+                <div className="text-sm font-medium text-[color:var(--accent)]">
                   Enter
                 </div>
-              </motion.div>
+              </div>
             </Link>
-          </motion.li>
+          </li>
         ))}
-      </motion.ul>
+      </ul>
     </section>
   );
 }

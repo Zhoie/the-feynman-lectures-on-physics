@@ -23,7 +23,7 @@ export function createMulberry32(seed: number): RandomFn {
   };
 }
 
-export function randomNormal(random: RandomFn): number {
+function randomNormal(random: RandomFn): number {
   const u1 = Math.max(1e-6, random());
   const u2 = random();
   return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);

@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useSearchString } from "@/core/navigation/search-params";
 
 export function ShareBar({ label }: { label: string }) {
+  return <ShareBarContent label={label} />;
+}
+
+function ShareBarContent({ label }: { label: string }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const search = searchParams.toString();
+  const search = useSearchString();
   const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState("");
   const resetRef = useRef<number | null>(null);
@@ -54,7 +58,7 @@ export function ShareBar({ label }: { label: string }) {
         type="button"
         onClick={handleCopy}
         aria-describedby={statusId}
-        className={`rounded-full border bg-white/80 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.28em] shadow-sm transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] sm:text-xs ${
+        className={`rounded-full border bg-white/80 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.28em] transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] sm:text-xs ${
           copied
             ? "border-slate-900/20 text-slate-950"
             : "border-slate-900/10 text-slate-600 hover:-translate-y-0.5 hover:border-slate-900/30"

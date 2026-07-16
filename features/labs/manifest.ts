@@ -15,13 +15,13 @@ export type LabSection = {
   archetype: string | null;
 };
 
-export type LabManifest = {
+type LabManifest = {
   version: number;
   generatedAt: string;
   sections: LabSection[];
 };
 
-export const labManifest = manifestData as LabManifest;
+const labManifest = manifestData as LabManifest;
 
 export function getLabSections() {
   return labManifest.sections;

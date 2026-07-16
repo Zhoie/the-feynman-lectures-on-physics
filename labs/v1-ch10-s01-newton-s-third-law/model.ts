@@ -204,9 +204,12 @@ function benchmarkResidual(state: State) {
   if (!profile || !state.history.length) {
     return 0;
   }
-  const simulated = state.history
-    .filter((point) => point.t <= 0.55)
-    .map((point) => ({ x: point.t, y: point.measuredBalance }));
+  const simulated: Array<{ x: number; y: number }> = [];
+  for (const point of state.history) {
+    if (point.t <= 0.55) {
+      simulated.push({ x: point.t, y: point.measuredBalance });
+    }
+  }
   return seriesRmsResidual(simulated, benchmarkSeries(profile));
 }
 

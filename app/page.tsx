@@ -3,14 +3,15 @@ import { volumes } from "@/features/lectures/data";
 import { HomeHero } from "@/features/lectures/ui/home-hero";
 import { VolumeGrid } from "@/features/lectures/ui/volume-grid";
 
+const readingArc = [
+  "Start with motion, scale, and physical intuition.",
+  "Move into fields, matter, and distributed systems.",
+  "Finish with amplitudes, spin, and quantum structure.",
+];
+
 export default function HomePage() {
   const volumeOne = volumes[0];
   const primaryHref = volumeOne ? `/volume/${volumeOne.id}` : "/volume/volume-1";
-  const readingArc = [
-    "Start with motion, scale, and physical intuition.",
-    "Move into fields, matter, and distributed systems.",
-    "Finish with amplitudes, spin, and quantum structure.",
-  ];
 
   return (
     <main id="main-content" className="min-h-screen">
@@ -25,7 +26,7 @@ export default function HomePage() {
             <li key={volume.id}>
               <Link
                 href={`/volume/${volume.id}`}
-                className="group grid gap-4 rounded-2xl border border-slate-900/10 bg-white/55 p-5 transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-slate-900/20 hover:bg-white/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] md:grid-cols-[auto_1fr_auto] md:items-center"
+                className="group grid gap-4 rounded-2xl border border-slate-900/10 bg-white/55 p-5 transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-slate-900/20 hover:bg-white/80 hover:shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] md:grid-cols-[auto_1fr_auto] md:items-center"
               >
                 <span className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-900/10 bg-white/75 text-[11px] font-medium uppercase tracking-[0.3em] text-slate-500">
                   {index + 1}

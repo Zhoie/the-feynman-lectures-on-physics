@@ -16,29 +16,34 @@ function toConfig(experiment: Experiment): ChapterExperiment {
   };
 }
 
-function validateExperimentParams(experiment: Experiment, chapterLabel: string) {
+function validateExperimentParams(
+  experiment: Experiment,
+  chapterLabel: string,
+) {
   const template = createModuleConfig(experiment.module);
   const meta = template.paramMeta;
   const paramKeys = Object.keys(experiment.params);
+  const paramKeySet = new Set(paramKeys);
+  const metaKeySet = new Set(meta.map((param) => param.id));
 
   meta.forEach((param) => {
-    if (!paramKeys.includes(param.id)) {
+    if (!paramKeySet.has(param.id)) {
       throw new Error(
-        `Missing param '${param.id}' in ${experiment.id} (${chapterLabel}).`
+        `Missing param '${param.id}' in ${experiment.id} (${chapterLabel}).`,
       );
     }
     const value = experiment.params[param.id];
     if (value < param.min || value > param.max) {
       throw new Error(
-        `Param '${param.id}' out of range in ${experiment.id} (${chapterLabel}).`
+        `Param '${param.id}' out of range in ${experiment.id} (${chapterLabel}).`,
       );
     }
   });
 
   paramKeys.forEach((key) => {
-    if (!meta.find((param) => param.id === key)) {
+    if (!metaKeySet.has(key)) {
       throw new Error(
-        `Unknown param '${key}' in ${experiment.id} (${chapterLabel}).`
+        `Unknown param '${key}' in ${experiment.id} (${chapterLabel}).`,
       );
     }
   });
@@ -55,31 +60,31 @@ function validateChapterExperiments() {
     }
     if (volumeSet.length !== volume.chapters.length) {
       throw new Error(
-        `Experiment count mismatch for ${volume.id}: expected ${volume.chapters.length}, got ${volumeSet.length}.`
+        `Experiment count mismatch for ${volume.id}: expected ${volume.chapters.length}, got ${volumeSet.length}.`,
       );
     }
     volume.chapters.forEach((chapter, index) => {
       const chapterSet = volumeSet[index];
       if (!chapterSet) {
         throw new Error(
-          `Missing experiments for ${volume.id} chapter ${chapter.index}.`
+          `Missing experiments for ${volume.id} chapter ${chapter.index}.`,
         );
       }
-      if (chapterSet.length < 2 || chapterSet.length > 3) {
+      if (chapterSet.length < 2 || chapterSet.length > 4) {
         throw new Error(
-          `Chapter ${volume.id} ${chapter.label} must have 2-3 experiments.`
+          `Chapter ${volume.id} ${chapter.label} must have 2-4 experiments.`,
         );
       }
       chapterSet.forEach((experiment) => {
         if (idSet.has(experiment.id)) {
           throw new Error(
-            `Duplicate experiment id detected: ${experiment.id}.`
+            `Duplicate experiment id detected: ${experiment.id}.`,
           );
         }
         idSet.add(experiment.id);
         validateExperimentParams(
           experiment,
-          `${volume.id} ${chapter.label} ${chapter.title}`
+          `${volume.id} ${chapter.label} ${chapter.title}`,
         );
       });
     });
@@ -88,9 +93,9 @@ function validateChapterExperiments() {
 
 export function getChapterExperiments(
   volume: Volume,
-  chapter: Chapter
+  chapter: Chapter,
 ): ChapterExperiment[] {
-  if (!validated && process.env.NODE_ENV !== "production") {
+  if (!validated) {
     validateChapterExperiments();
     validated = true;
   }
@@ -101,7 +106,7 @@ export function getChapterExperiments(
 
   if (!chapterSet) {
     throw new Error(
-      `Missing experiments for ${volume.id} ${chapter.label} (${chapter.title}).`
+      `Missing experiments for ${volume.id} ${chapter.label} (${chapter.title}).`,
     );
   }
 

@@ -1,51 +1,24 @@
-"use client";
-
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import type { CSSProperties } from "react";
 import type { Volume } from "../data";
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.08,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
-};
-
 export function VolumeGrid({ volumes }: { volumes: Volume[] }) {
-  const reduceMotion = useReducedMotion();
-
   return (
     <section className="mx-auto max-w-6xl px-6 pb-20">
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="grid gap-6 md:grid-cols-3"
-      >
+      <div className="grid gap-6 md:grid-cols-3">
         {volumes.map((volume) => (
-          <motion.div key={volume.id} variants={itemVariants}>
+          <div key={volume.id}>
             <Link
               href={`/volume/${volume.id}`}
               className="group block h-full focus-visible:outline-none"
             >
-              <motion.div
-                whileHover={reduceMotion ? {} : { y: -6 }}
-                whileTap={reduceMotion ? {} : { scale: 0.98 }}
-                className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-slate-900/10 bg-white/80 p-6 shadow-sm backdrop-blur transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:shadow-lg group-focus-visible:-translate-y-1 group-focus-visible:shadow-lg group-focus-visible:ring-2 group-focus-visible:ring-[color:var(--accent)]/35 group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-[var(--paper)]"
+              <div
+                className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-slate-900/10 bg-white/80 p-6 transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:border-slate-900/20 group-hover:shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] group-focus-visible:ring-2 group-focus-visible:ring-[color:var(--accent)]/35 group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-[var(--paper)]"
                 style={{ "--accent": volume.accent } as CSSProperties}
               >
                 <div className="absolute inset-0 opacity-0 transition duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 [background-image:radial-gradient(circle_at_20%_20%,color-mix(in_srgb,var(--accent)_25%,transparent),transparent_60%)]" />
                 <div className="relative flex flex-col gap-5">
-                  <div className="text-xs uppercase tracking-[0.4em] text-[color:var(--accent)]">
+                  <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--accent)]">
                     {volume.title}
                   </div>
                   <div className="flex flex-col gap-2">
@@ -57,18 +30,18 @@ export function VolumeGrid({ volumes }: { volumes: Volume[] }) {
                     </p>
                   </div>
                 </div>
-                <div className="relative mt-6 flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-500">
+                <div className="relative mt-6 flex items-center justify-between text-sm font-medium text-slate-500">
                   <span>{volume.chapterRange}</span>
                   <span className="flex items-center gap-2">
                     Explore
                     <span className="text-[color:var(--accent)]">↗</span>
                   </span>
                 </div>
-              </motion.div>
+              </div>
             </Link>
-          </motion.div>
+          </div>
         ))}
-      </motion.div>
+      </div>
     </section>
   );
 }

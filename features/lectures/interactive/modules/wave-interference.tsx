@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { setupCanvas, useCanvasSize } from "../core/canvas";
+import { useCanvasAnimation, useCanvasSize } from "@/core/canvas/runtime";
 
 type WaveParams = {
   amplitude: number;
@@ -19,22 +18,12 @@ export function WaveInterferenceModule({
     height: 320,
     compactHeight: 250,
   });
-  const timeRef = useRef(0);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || width === 0) return;
-    const ctx = setupCanvas(canvas, width, height, dpr);
-    if (!ctx) return;
-
-    let raf = 0;
-    let last = performance.now();
-
-    const draw = (time: number) => {
-      const dt = Math.min(0.03, (time - last) / 1000);
-      last = time;
-      timeRef.current += dt;
-
+  useCanvasAnimation({
+    canvasRef,
+    width,
+    height,
+    dpr,
+    draw: (ctx, frame) => {
       const p = params as WaveParams;
       const amp = p.amplitude;
       const freq = p.frequency;
@@ -59,8 +48,8 @@ export function WaveInterferenceModule({
       ctx.beginPath();
       for (let x = 0; x <= width; x += 2) {
         const t = (x / width) * Math.PI * 2;
-        const y1 = Math.sin(t * freq - timeRef.current * speed);
-        const y2 = Math.sin(t * (freq * 0.9) - timeRef.current * speed + phase);
+        const y1 = Math.sin(t * freq - frame.elapsed * speed);
+        const y2 = Math.sin(t * (freq * 0.9) - frame.elapsed * speed + phase);
         const y = mid + (y1 + y2) * 0.5 * amp * scale;
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
@@ -72,26 +61,25 @@ export function WaveInterferenceModule({
       ctx.beginPath();
       for (let x = 0; x <= width; x += 2) {
         const t = (x / width) * Math.PI * 2;
-        const y1 = Math.sin(t * freq - timeRef.current * speed);
-        const y2 = Math.sin(t * (freq * 0.9) - timeRef.current * speed + phase);
+        const y1 = Math.sin(t * freq - frame.elapsed * speed);
+        const y2 = Math.sin(t * (freq * 0.9) - frame.elapsed * speed + phase);
         const y = mid + (y1 + y2) * amp * scale;
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
       ctx.stroke();
-
-      raf = requestAnimationFrame(draw);
-    };
-
-    raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
-  }, [canvasRef, width, height, dpr, params]);
+    },
+  });
 
   return (
     <canvas
       ref={canvasRef}
       style={{ height, touchAction: "none" }}
-      className="w-full rounded-2xl border border-slate-900/10 bg-white/60 shadow-sm"
-    />
+      className="w-full rounded-2xl border border-slate-900/10 bg-white/60"
+      role="img"
+      aria-label="Two waves combining through interference"
+    >
+      Wave-interference simulation.
+    </canvas>
   );
 }

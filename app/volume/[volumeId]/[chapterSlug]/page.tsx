@@ -3,17 +3,18 @@ import type { Metadata } from "next";
 import { volumes } from "@/features/lectures/data";
 import { ChapterHero } from "@/features/lectures/ui/chapter-hero";
 import { ChapterExplorer } from "@/features/lectures/ui/chapter-explorer";
+import { ChapterInteractive } from "@/features/lectures/ui/chapter-interactive";
 import { ChapterNav } from "@/features/lectures/ui/chapter-nav";
 import { ChapterContentSection } from "@/features/lectures/ui/chapter-content";
 import { ChapterLabList } from "@/features/labs/ui/chapter-lab-list";
 import { ShareBar } from "@/features/lectures/ui/share-bar";
 import {
   chapterSlugSchema,
-  chapterSearchParamsSchema,
   volumeIdSchema,
 } from "@/features/lectures/schemas";
 import { getChapterNeighbors } from "@/features/lectures/lib/lectures";
 import { getChapterContent } from "@/features/lectures/content";
+import { getChapterExperiments } from "@/features/lectures/interactive-map";
 import { getChapterSections } from "@/features/labs/manifest";
 
 export function generateStaticParams() {
@@ -25,17 +26,18 @@ export function generateStaticParams() {
   );
 }
 
-type PageParams = { volumeId: string; chapterSlug: string };
+export const dynamicParams = false;
 
-type PageSearchParams = { [key: string]: string | string[] | undefined };
+type PageParams = { volumeId: string; chapterSlug: string };
 
 export async function generateMetadata({
   params,
 }: {
-  params: PageParams;
+  params: PageParams | Promise<PageParams>;
 }): Promise<Metadata> {
-  const volumeResult = volumeIdSchema.safeParse(params);
-  const chapterResult = chapterSlugSchema.safeParse(params);
+  const resolvedParams = await params;
+  const volumeResult = volumeIdSchema.safeParse(resolvedParams);
+  const chapterResult = chapterSlugSchema.safeParse(resolvedParams);
 
   if (!volumeResult.success || !chapterResult.success) {
     return {};
@@ -62,6 +64,9 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: {
+      canonical: `/volume/${data.volume.id}/${data.current.slug}`,
+    },
     openGraph: {
       title,
       description,
@@ -80,10 +85,8 @@ export async function generateMetadata({
 
 export default async function ChapterPage({
   params,
-  searchParams,
 }: {
   params: PageParams | Promise<PageParams>;
-  searchParams?: PageSearchParams | Promise<PageSearchParams>;
 }) {
   const resolvedParams = await params;
   const volumeResult = volumeIdSchema.safeParse(resolvedParams);
@@ -102,15 +105,8 @@ export default async function ChapterPage({
     notFound();
   }
 
-  const resolvedSearchParams = await searchParams;
-  const searchResult = chapterSearchParamsSchema.safeParse(
-    resolvedSearchParams ?? {}
-  );
-  const activePanel =
-    searchResult.success && searchResult.data.panel
-      ? searchResult.data.panel
-      : "intuition";
   const content = getChapterContent(data.volume, data.current);
+  const experiments = getChapterExperiments(data.volume, data.current);
   const sections = getChapterSections(data.volume.id, data.current.index);
 
   return (
@@ -127,12 +123,13 @@ export default async function ChapterPage({
         chapter={data.current}
         content={content}
       />
+      <ChapterInteractive experiments={experiments} />
       <ChapterLabList sections={sections} />
       <ChapterExplorer
-        volume={data.volume}
-        chapter={data.current}
+        accent={data.volume.accent}
+        chapterSlug={data.current.slug}
+        chapterTitle={data.current.title}
         panels={content.panels}
-        activePanel={activePanel}
       />
       <ChapterNav
         volume={data.volume}

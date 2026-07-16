@@ -1,4 +1,9 @@
 import type { ChartBandPoint, ChartSpec, ChartSeries } from "../types";
+import {
+  getChartDomain,
+  isFiniteBandPoint,
+  isFiniteChartPoint,
+} from "../lib/chart";
 
 const DEFAULT_COLORS = [
   "#0f172a",
@@ -24,14 +29,15 @@ function buildPath(
   height: number,
   padding: number
 ) {
-  if (!series.data.length || xMax === xMin || yMax === yMin) {
+  const points = series.data.filter(isFiniteChartPoint);
+  if (!points.length || xMax === xMin || yMax === yMin) {
     return "";
   }
   const scaleX = (value: number) =>
     padding + ((value - xMin) / (xMax - xMin)) * (width - padding * 2);
   const scaleY = (value: number) =>
     height - padding - ((value - yMin) / (yMax - yMin)) * (height - padding * 2);
-  return series.data
+  return points
     .map((point, index) => {
       const x = scaleX(point.x);
       const y = scaleY(point.y);
@@ -50,7 +56,8 @@ function buildBandPath(
   height: number,
   padding: number
 ) {
-  if (!points.length || xMax === xMin || yMax === yMin) {
+  const finitePoints = points.filter(isFiniteBandPoint);
+  if (!finitePoints.length || xMax === xMin || yMax === yMin) {
     return "";
   }
   const scaleX = (value: number) =>
@@ -58,14 +65,14 @@ function buildBandPath(
   const scaleY = (value: number) =>
     height - padding - ((value - yMin) / (yMax - yMin)) * (height - padding * 2);
 
-  const upper = points
+  const upper = finitePoints
     .map((point, index) => {
       const x = scaleX(point.x);
       const y = scaleY(point.yMax);
       return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
     })
     .join(" ");
-  const lower = [...points]
+  const lower = [...finitePoints]
     .reverse()
     .map((point) => {
       const x = scaleX(point.x);
@@ -76,29 +83,20 @@ function buildBandPath(
   return `${upper} ${lower} Z`;
 }
 
-export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) {
+export function LineChart({ chart, width = 420, height = 180 }: LineChartProps) {
   const padding = 24;
-  const allPoints = chart.series.flatMap((series) => series.data);
-  const bandPoints = chart.bands?.flatMap((band) => band.data) ?? [];
-  const xValues = allPoints.map((point) => point.x).concat(bandPoints.map((point) => point.x));
-  const yValues = allPoints
-    .map((point) => point.y)
-    .concat(bandPoints.flatMap((point) => [point.yMin, point.yMax]));
-  const xMin = chart.xRange?.[0] ?? Math.min(...xValues, 0);
-  const xMax = chart.xRange?.[1] ?? Math.max(...xValues, 1);
-  const yMin = chart.yRange?.[0] ?? Math.min(...yValues, 0);
-  const yMax = chart.yRange?.[1] ?? Math.max(...yValues, 1);
+  const { xMin, xMax, yMin, yMax } = getChartDomain(chart);
 
   return (
-    <div className="rounded-2xl border border-slate-900/10 bg-white/80 p-4 shadow-sm">
-      <div className="text-xs uppercase tracking-[0.28em] text-slate-400">
+    <figure className="rounded-2xl border border-slate-900/10 bg-white/85 p-4">
+      <figcaption className="text-sm font-semibold text-slate-700">
         {chart.title}
-      </div>
+      </figcaption>
       <svg
         className="mt-3 w-full"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label={chart.title}
+        aria-label={`${chart.title} chart`}
       >
         <rect
           x={0}
@@ -112,7 +110,7 @@ export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) 
           y1={padding}
           x2={padding}
           y2={height - padding}
-          stroke="#cbd5f5"
+          stroke="#cbd5e1"
           strokeWidth={1}
         />
         <line
@@ -120,7 +118,7 @@ export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) 
           y1={height - padding}
           x2={width - padding}
           y2={height - padding}
-          stroke="#cbd5f5"
+          stroke="#cbd5e1"
           strokeWidth={1}
         />
         {chart.bands?.map((band, index) => {
@@ -161,6 +159,7 @@ export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) 
               strokeDasharray={series.lineStyle === "dashed" ? "6 4" : undefined}
               strokeLinejoin="round"
               strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
             />
           );
         })}
@@ -169,7 +168,7 @@ export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) 
             x={width - padding}
             y={height - 6}
             textAnchor="end"
-            fontSize="10"
+            fontSize="12"
             fill="#64748b"
           >
             {chart.xLabel}
@@ -180,7 +179,7 @@ export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) 
             x={padding}
             y={12}
             textAnchor="start"
-            fontSize="10"
+            fontSize="12"
             fill="#64748b"
           >
             {chart.yLabel}
@@ -200,7 +199,7 @@ export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) 
               />
               <span>{series.label}</span>
               {series.role ? (
-                <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                <span className="text-xs uppercase tracking-[0.14em] text-slate-600">
                   {series.role}
                 </span>
               ) : null}
@@ -208,6 +207,6 @@ export function LineChart({ chart, width = 280, height = 160 }: LineChartProps) 
           ))}
         </div>
       ) : null}
-    </div>
+    </figure>
   );
 }

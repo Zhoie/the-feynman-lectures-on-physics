@@ -2,15 +2,44 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 
-function getParam(url: string, key: string, fallback: string) {
+function sanitizeText(value: string, maximumLength: number) {
+  return value
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maximumLength);
+}
+
+function getParam(
+  url: string,
+  key: string,
+  fallback: string,
+  maximumLength: number,
+) {
   const { searchParams } = new URL(url);
-  return searchParams.get(key) ?? fallback;
+  const value = sanitizeText(searchParams.get(key) ?? "", maximumLength);
+  return value || fallback;
 }
 
 export function GET(request: Request) {
-  const title = getParam(request.url, "title", "The Feynman Lectures on Physics");
-  const subtitle = getParam(request.url, "subtitle", "Interactive Atlas");
-  const meta = getParam(request.url, "meta", "Volumes and Chapters");
+  const title = getParam(
+    request.url,
+    "title",
+    "The Feynman Lectures on Physics",
+    90,
+  );
+  const subtitle = getParam(
+    request.url,
+    "subtitle",
+    "Interactive Atlas",
+    110,
+  );
+  const meta = getParam(
+    request.url,
+    "meta",
+    "Volumes and Chapters",
+    70,
+  );
 
   return new ImageResponse(
     (
@@ -54,6 +83,10 @@ export function GET(request: Request) {
     {
       width: 1200,
       height: 630,
+      headers: {
+        "Cache-Control":
+          "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
+      },
     }
   );
 }

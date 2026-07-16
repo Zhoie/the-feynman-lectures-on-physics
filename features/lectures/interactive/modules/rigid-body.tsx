@@ -2,7 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import * as planck from "planck";
-import { setupCanvas, useCanvasSize } from "../core/canvas";
+import { useCanvasAnimation, useCanvasSize } from "@/core/canvas/runtime";
+import { useLazyRef } from "@/core/react/use-lazy-ref";
+import {
+  createSimLoopState,
+  stepFixedSimulation,
+} from "@/core/simulation/fixed-step";
 
 type RigidParams = {
   gravity: number;
@@ -52,23 +57,29 @@ export function RigidBodyModule({
     compactHeight: 250,
   });
   const worldRef = useRef<WorldState | null>(null);
+  const loopStateRef = useLazyRef(createSimLoopState);
 
   useEffect(() => {
     worldRef.current = createWorld(params as RigidParams);
-  }, [params]);
+    loopStateRef.current = createSimLoopState();
+  }, [loopStateRef, params]);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || width === 0) return;
-    const ctx = setupCanvas(canvas, width, height, dpr);
-    if (!ctx) return;
-
-    let raf = 0;
-    const draw = () => {
+  useCanvasAnimation({
+    canvasRef,
+    width,
+    height,
+    dpr,
+    draw: (ctx, frame) => {
       const state = worldRef.current;
       if (!state) return;
 
-      state.world.step(1 / 60);
+      const result = stepFixedSimulation(
+        loopStateRef.current,
+        frame.delta,
+        { fixedDt: 1 / 120, maxSubSteps: 16, maxFrameDt: 1 / 12 },
+        (dt) => state.world.step(dt)
+      );
+      loopStateRef.current = result.state;
       ctx.clearRect(0, 0, width, height);
       ctx.fillStyle = "rgba(255,255,255,0.6)";
       ctx.fillRect(0, 0, width, height);
@@ -105,19 +116,18 @@ export function RigidBodyModule({
         ctx.strokeStyle = "rgba(15,23,42,0.4)";
         ctx.stroke();
       });
-
-      raf = requestAnimationFrame(draw);
-    };
-
-    raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
-  }, [canvasRef, width, height, dpr]);
+    },
+  });
 
   return (
     <canvas
       ref={canvasRef}
       style={{ height, touchAction: "none" }}
-      className="w-full rounded-2xl border border-slate-900/10 bg-white/60 shadow-sm"
-    />
+      className="w-full rounded-2xl border border-slate-900/10 bg-white/60"
+      role="img"
+      aria-label="Rigid bodies moving under gravity and contact forces"
+    >
+      Rigid-body physics simulation.
+    </canvas>
   );
 }

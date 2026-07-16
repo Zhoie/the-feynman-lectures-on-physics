@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSimLoopState, stepFixedSimulation } from "@/features/labs/core/sim-loop";
+import { createSimLoopState, stepFixedSimulation } from "@/core/simulation/fixed-step";
 import {
   externalPulseForce,
   integrateBody,

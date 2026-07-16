@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { setupCanvas, useCanvasSize } from "../core/canvas";
+import { setupCanvas, useCanvasSize } from "@/core/canvas/runtime";
 
 type SpacetimeParams = {
   velocity: number;
@@ -106,7 +106,7 @@ export function SpacetimeModule({
     <canvas
       ref={canvasRef}
       style={{ height, touchAction: "none" }}
-      className="w-full rounded-2xl border border-slate-900/10 bg-white/60 shadow-sm"
+      className="w-full rounded-2xl border border-slate-900/10 bg-white/60"
     />
   );
 }

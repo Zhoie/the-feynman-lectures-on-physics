@@ -1,9 +1,10 @@
 import type { MetadataRoute } from "next";
+import { getAbsoluteSiteUrl } from "@/core/config/site";
+import { registeredLabIds } from "@/features/labs/registered-lab-ids";
 import { volumes } from "@/features/lectures/data";
 import { getAllTransitionParams } from "@/features/lectures/lib/lectures";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const urls: string[] = ["/"];
 
   for (const volume of volumes) {
@@ -19,8 +20,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     );
   }
 
+  for (const labId of registeredLabIds) {
+    urls.push(`/lab/${labId}`);
+  }
+
   return urls.map((path) => ({
-    url: `${baseUrl}${path}`,
+    url: getAbsoluteSiteUrl(path),
     lastModified: new Date(),
   }));
 }

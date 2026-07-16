@@ -1,419 +1,150 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { setupCanvas, useCanvasSize } from "@/features/lectures/interactive/core/canvas";
-import {
-  createSimLoopState,
-  normalizeSimulationConfig,
-  stepFixedSimulation,
-} from "../core/sim-loop";
-import type {
-  ChartSpec,
-  LabModel,
-  MetricValue,
-  ModelMeta,
-  ValidationResult,
-} from "../types";
-import { LineChart } from "./line-chart";
+import type { LabModel } from "../types";
+import { LabControlPanel } from "./lab-control-panel";
+import { LabResults } from "./lab-results";
+import { statusPill } from "./lab-status";
+import { ModelConfidence } from "./model-confidence";
+import { useLabRuntime } from "./use-lab-runtime";
 
 type LabShellProps = {
-  model: LabModel<any, any>;
+  model: LabModel<Record<string, number>, unknown>;
 };
-
-const DEFAULT_META: ModelMeta = {
-  fidelity: "qualitative",
-  assumptions: ["Model assumptions are not yet documented for this lab."],
-  validRange: ["Use control ranges shown in the UI."],
-  sources: [],
-  notes: "Validation defaults to runtime consistency checks only.",
-};
-
-function statusPill(status?: "ok" | "warn" | "fail") {
-  if (status === "fail") {
-    return "rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-rose-700";
-  }
-  if (status === "warn") {
-    return "rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700";
-  }
-  return "rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-700";
-}
-
-function formatMetric(metric: MetricValue) {
-  if (typeof metric.value !== "number") return `${metric.value}`;
-  const precision = metric.precision ?? 3;
-  const abs = Math.abs(metric.value);
-  if (abs >= 1e4 || (abs > 0 && abs < 1e-3)) {
-    return metric.value.toExponential(Math.min(4, Math.max(1, precision)));
-  }
-  const fixed = metric.value.toFixed(precision);
-  return fixed === "-0.000" ? "0.000" : fixed;
-}
 
 export function LabShell({ model }: LabShellProps) {
-  const defaultParams = useMemo(() => {
-    return model.params.reduce<Record<string, number>>((acc, param) => {
-      const fallback =
-        typeof param.default === "number"
-          ? param.default
-          : param.options?.[0]?.value ?? 0;
-      acc[param.id] = fallback;
-      return acc;
-    }, {});
-  }, [model]);
-
-  const [params, setParams] = useState<Record<string, number>>(defaultParams);
-  const [metrics, setMetrics] = useState<MetricValue[]>([]);
-  const [charts, setCharts] = useState<ChartSpec[]>([]);
-  const [validation, setValidation] = useState<ValidationResult | null>(null);
-  const [resetToken, setResetToken] = useState(0);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const { canvasRef, width, height, dpr } = useCanvasSize({ height: 360 });
-
-  const stateRef = useRef<unknown>(null);
-  const loopStateRef = useRef(createSimLoopState());
-  const frameRef = useRef<number | null>(null);
-  const lastTimeRef = useRef<number | null>(null);
-  const simulation = useMemo(
-    () => normalizeSimulationConfig(model.simulation),
-    [model.simulation]
-  );
-  const meta = model.meta ?? DEFAULT_META;
-  const controls = useMemo(() => {
-    const basic = model.params.filter((param) => (param.group ?? "basic") === "basic");
-    const advanced = model.params.filter(
-      (param) => (param.group ?? "basic") === "advanced"
-    );
-    return { basic, advanced };
-  }, [model.params]);
-
-  const renderControl = (param: (typeof model.params)[number]) => {
-    const fallback =
-      typeof param.default === "number"
-        ? param.default
-        : param.options?.[0]?.value ?? 0;
-    const rawValue = params[param.id];
-    const value = Number.isFinite(rawValue) ? rawValue : fallback;
-    const controlType = param.type ?? "range";
-    if (param.visibleWhen && !param.visibleWhen(params)) {
-      return null;
-    }
-    if (controlType === "select" && param.options) {
-      return (
-        <label key={param.id} className="flex flex-col gap-2 text-sm">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>{param.label}</span>
-            <span>
-              {Number.isFinite(value) ? value.toFixed(3) : "—"}
-              {param.unit ? ` ${param.unit}` : ""}
-            </span>
-          </div>
-          <select
-            value={value}
-            onChange={(event) =>
-              setParams((prev) => ({
-                ...prev,
-                [param.id]: Number(event.target.value),
-              }))
-            }
-            className="rounded-lg border border-slate-900/10 bg-white px-2 py-1 text-sm text-slate-700"
-          >
-            {param.options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      );
-    }
-
-    return (
-      <label key={param.id} className="flex flex-col gap-2 text-sm">
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <span>{param.label}</span>
-          <span>
-            {Number.isFinite(value) ? value.toFixed(3) : "—"}
-            {param.unit ? ` ${param.unit}` : ""}
-          </span>
-        </div>
-        <input
-          type="range"
-          min={param.min}
-          max={param.max}
-          step={param.step}
-          value={value}
-          onChange={(event) =>
-            setParams((prev) => ({
-              ...prev,
-              [param.id]: Number(event.target.value),
-            }))
-          }
-          className="w-full accent-slate-900"
-        />
-      </label>
-    );
-  };
-
-  useEffect(() => {
-    setParams(defaultParams);
-    setResetToken((token) => token + 1);
-  }, [defaultParams]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || width === 0 || height === 0) return;
-    const ctx = setupCanvas(canvas, width, height, dpr);
-    if (!ctx) return;
-
-    stateRef.current = model.create(params);
-    loopStateRef.current = createSimLoopState();
-    setMetrics(model.metrics(stateRef.current, params));
-    setCharts(model.charts ? model.charts(stateRef.current, params) : []);
-    setValidation(
-      model.validate
-        ? model.validate(stateRef.current, params)
-        : {
-            status: "ok",
-            checks: [],
-            warnings: ["Model-level quantitative validation is not configured yet."],
-          }
-    );
-
-    let frameCount = 0;
-    let active = true;
-    lastTimeRef.current = null;
-
-    const loop = (now: number) => {
-      if (!active) return;
-      if (!lastTimeRef.current) {
-        lastTimeRef.current = now;
-      }
-      const dt = (now - lastTimeRef.current) / 1000;
-      lastTimeRef.current = now;
-      const result = stepFixedSimulation(
-        loopStateRef.current,
-        dt,
-        simulation,
-        (fixedDt) => {
-          model.step(stateRef.current, params, fixedDt);
-        }
-      );
-      loopStateRef.current = result.state;
-      model.draw(ctx, stateRef.current, params, { width, height, dpr });
-      if (frameCount % 6 === 0) {
-        setMetrics(model.metrics(stateRef.current, params));
-        setCharts(model.charts ? model.charts(stateRef.current, params) : []);
-        setValidation(
-          model.validate
-            ? model.validate(stateRef.current, params)
-            : {
-                status: "ok",
-                checks: [],
-                warnings: ["Model-level quantitative validation is not configured yet."],
-              }
-        );
-      }
-      frameCount += 1;
-      frameRef.current = requestAnimationFrame(loop);
-    };
-
-    frameRef.current = requestAnimationFrame(loop);
-    return () => {
-      active = false;
-      if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    };
-  }, [canvasRef, width, height, dpr, model, params, resetToken, simulation]);
+  const {
+    animated,
+    canvasRef,
+    controls,
+    defaultParams,
+    height,
+    meta,
+    params,
+    paused,
+    reset,
+    retry,
+    runtimeError,
+    simulation,
+    snapshot,
+    togglePlayback,
+    updateParam,
+    followsSystemPreference,
+    useSystemPlaybackPreference,
+  } = useLabRuntime(model);
+  const validationStatus = snapshot.validation?.status ?? "warn";
+  const validationLabel = snapshot.validation?.status ?? "checking";
 
   return (
-    <section className="flex flex-col gap-6 rounded-3xl border border-slate-900/10 bg-white/80 p-6 shadow-sm">
-      <header className="flex flex-col gap-2">
-        <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
-          {model.archetype}
+    <section
+      className="overflow-hidden rounded-2xl border border-slate-900/10 bg-white/85 sm:rounded-[2rem]"
+      aria-labelledby={`${model.id}-title`}
+    >
+      <header className="flex flex-col gap-4 border-b border-slate-900/10 px-5 py-6 sm:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            {model.archetype}
+          </div>
+          <span className={statusPill(validationStatus)}>
+            {validationLabel}
+          </span>
         </div>
-        <h2 className="text-2xl font-semibold text-slate-900">{model.title}</h2>
-        <p className="max-w-3xl text-sm leading-6 text-slate-600">
-          {model.summary}
-        </p>
+        <div>
+          <h2
+            id={`${model.id}-title`}
+            className="font-[family:var(--font-display)] text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl"
+          >
+            {model.title}
+          </h2>
+          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
+            {model.summary}
+          </p>
+        </div>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="rounded-2xl border border-slate-900/10 bg-slate-900/5 p-3">
-          <canvas
-            ref={canvasRef}
-            className="h-full w-full rounded-2xl bg-white"
-            style={{ touchAction: "none" }}
-          />
-        </div>
-        <div className="flex flex-col gap-4 rounded-2xl border border-slate-900/10 bg-white/70 p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              Controls
-            </div>
-            <button
-              type="button"
-              onClick={() => setResetToken((token) => token + 1)}
-              className="rounded-full border border-slate-900/10 px-3 py-1 text-xs text-slate-600 hover:border-slate-900/30"
-            >
-              Reset
-            </button>
-          </div>
-          <div className="flex flex-col gap-4">
-            {controls.basic.map((param) => renderControl(param))}
-            {controls.advanced.length ? (
-              <div className="rounded-xl border border-slate-900/10 bg-slate-50/80 p-3">
+      <div className="grid gap-5 p-3 sm:p-6 xl:grid-cols-[minmax(0,1.75fr)_minmax(18rem,0.65fr)] xl:p-8">
+        <div className="overflow-hidden rounded-3xl border border-slate-900/10 bg-slate-950/[0.035] p-2 sm:p-3">
+          <div className="mb-2 flex min-h-11 flex-wrap items-center justify-between gap-2 px-2 py-1 text-xs font-semibold text-slate-600">
+            <span>Live simulation</span>
+            <div className="flex flex-wrap items-center gap-2 font-normal">
+              <span aria-live="polite">
+                {animated
+                  ? paused
+                    ? "Paused"
+                    : "Frame-rate independent"
+                  : "Static model"}
+              </span>
+              {animated && !followsSystemPreference ? (
                 <button
                   type="button"
-                  onClick={() => setShowAdvanced((prev) => !prev)}
-                  className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-[0.22em] text-slate-500"
+                  onClick={useSystemPlaybackPreference}
+                  className="min-h-9 rounded-full px-3 py-1.5 font-medium text-slate-600 transition-colors hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
                 >
-                  <span>Advanced</span>
-                  <span>{showAdvanced ? "Hide" : "Show"}</span>
+                  Use system setting
                 </button>
-                {showAdvanced ? (
-                  <div className="mt-3 flex flex-col gap-4">
-                    {controls.advanced.map((param) => renderControl(param))}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex flex-col gap-4 rounded-2xl border border-slate-900/10 bg-white/70 p-4">
-          <div>
-            <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              Metrics
-            </div>
-            <div className="mt-3 grid gap-2 text-xs text-slate-600">
-              {metrics.map((metric) => (
-                <div
-                  key={metric.id}
-                  className="rounded-xl border border-slate-900/5 bg-white/70 p-2"
+              ) : null}
+              {animated ? (
+                <button
+                  type="button"
+                  onClick={togglePlayback}
+                  aria-pressed={paused}
+                  className="min-h-9 rounded-full border border-slate-900/15 bg-white px-3 py-1.5 font-semibold text-slate-700 transition-colors hover:border-slate-900/30 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-slate-600">{metric.label}</span>
-                    {metric.status ? (
-                      <span className={statusPill(metric.status)}>{metric.status}</span>
-                    ) : null}
-                  </div>
-                  <div className="mt-1 flex items-center justify-between">
-                    <span className="font-medium text-slate-900">
-                      {formatMetric(metric)}
-                      {metric.unit ? ` ${metric.unit}` : ""}
-                    </span>
-                    {metric.reference !== undefined ? (
-                      <span className="text-[11px] text-slate-500">
-                        ref {metric.reference}
-                        {metric.tolerance !== undefined ? ` ± ${metric.tolerance}` : ""}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
+                  {paused ? "Play" : "Pause"}
+                </button>
+              ) : null}
             </div>
           </div>
-          <div className="rounded-xl border border-slate-900/10 bg-slate-50/80 p-3">
-            <div className="flex items-center justify-between">
-              <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                Model Confidence
+          {runtimeError ? (
+            <div
+              className="grid place-items-center rounded-2xl border border-rose-900/15 bg-rose-50 p-6 text-center"
+              style={{ height }}
+              role="alert"
+            >
+              <div>
+                <p className="text-sm font-semibold text-rose-900">
+                  The {runtimeError.phase} phase stopped safely.
+                </p>
+                <p className="mt-2 max-w-md text-sm leading-6 text-rose-800">
+                  {runtimeError.message}
+                </p>
+                <button
+                  type="button"
+                  onClick={retry}
+                  className="mt-4 min-h-11 rounded-full border border-rose-900/20 bg-white px-4 py-2 text-sm font-semibold text-rose-900 transition-colors hover:border-rose-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                >
+                  Retry model
+                </button>
               </div>
-              <span className={statusPill(validation?.status ?? "ok")}>
-                {validation?.status ?? "ok"}
-              </span>
             </div>
-            <div className="mt-3 text-xs text-slate-600">
-              <div className="font-semibold text-slate-700">Fidelity</div>
-              <div className="mt-1 uppercase tracking-[0.2em] text-slate-500">
-                {meta.fidelity}
-              </div>
-            </div>
-            <div className="mt-3 text-xs text-slate-600">
-              <div className="font-semibold text-slate-700">Assumptions</div>
-              <ul className="mt-1 list-disc space-y-1 pl-4">
-                {meta.assumptions.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="mt-3 text-xs text-slate-600">
-              <div className="font-semibold text-slate-700">Valid Range</div>
-              <ul className="mt-1 list-disc space-y-1 pl-4">
-                {meta.validRange.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            {validation?.checks.length ? (
-              <div className="mt-3 text-xs text-slate-600">
-                <div className="font-semibold text-slate-700">Checks</div>
-                <div className="mt-2 grid gap-2">
-                  {validation.checks.map((check) => (
-                    <div
-                      key={check.id}
-                      className="rounded-lg border border-slate-900/10 bg-white/80 p-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span>{check.label}</span>
-                        <span className={statusPill(check.status)}>{check.status}</span>
-                      </div>
-                      <div className="mt-1 text-[11px] text-slate-500">
-                        value {check.value}
-                        {check.reference !== undefined ? ` · ref ${check.reference}` : ""}
-                        {check.tolerance !== undefined ? ` · tol ${check.tolerance}` : ""}
-                      </div>
-                      {check.message ? (
-                        <div className="mt-1 text-[11px] text-slate-500">{check.message}</div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            {validation?.warnings?.length ? (
-              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700">
-                {validation.warnings.join(" ")}
-              </div>
-            ) : null}
-            {meta.sources.length ? (
-              <div className="mt-3 text-xs text-slate-600">
-                <div className="font-semibold text-slate-700">Sources</div>
-                <ul className="mt-1 list-disc space-y-1 pl-4">
-                  {meta.sources.map((source) => (
-                    <li key={`${source.kind}-${source.url}`}>
-                      <a
-                        href={source.url}
-                        className="text-sky-700 underline decoration-dotted"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {source.label}
-                      </a>{" "}
-                      <span className="text-slate-500">
-                        ({source.kind}
-                        {source.status ? ` · ${source.status}` : ""})
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {meta.notes ? (
-              <div className="mt-3 text-xs text-slate-500">{meta.notes}</div>
-            ) : null}
-            <div className="mt-3 text-[11px] text-slate-500">
-              fixed dt: {simulation.fixedDt.toFixed(4)} s · max substeps:{" "}
-              {simulation.maxSubSteps}
-            </div>
-          </div>
+          ) : (
+            <canvas
+              ref={canvasRef}
+              className="w-full rounded-2xl bg-white"
+              style={{ height, touchAction: "none" }}
+              role="img"
+              aria-label={`${model.title} simulation`}
+            >
+              {model.title} simulation.
+            </canvas>
+          )}
         </div>
+
+        <LabControlPanel
+          controls={controls}
+          defaultParams={defaultParams}
+          params={params}
+          onChange={updateParam}
+          onReset={reset}
+        />
       </div>
 
-      {charts.length ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {charts.map((chart) => (
-            <LineChart key={chart.id} chart={chart} />
-          ))}
-        </div>
-      ) : null}
+      <LabResults snapshot={snapshot} />
+      <ModelConfidence
+        meta={meta}
+        runtime={snapshot.runtime}
+        simulation={simulation}
+        validation={snapshot.validation}
+      />
     </section>
   );
 }

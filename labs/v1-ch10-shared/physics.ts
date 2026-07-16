@@ -1,4 +1,4 @@
-export const G = 9.81;
+const G = 9.81;
 
 export type Body1D = {
   x: number;
@@ -30,7 +30,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-export function slopeRadians(config: ResistanceConfig): number {
+function slopeRadians(config: ResistanceConfig): number {
   return (config.slopeDeg * Math.PI) / 180;
 }
 

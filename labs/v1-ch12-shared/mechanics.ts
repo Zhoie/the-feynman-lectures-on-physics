@@ -99,9 +99,13 @@ function defaultParams(controls: ControlSpec[]) {
   }, {});
 }
 
-function normalizeParams(input: Partial<Params> | undefined, controls: ControlSpec[]) {
-  const defaults = defaultParams(controls);
-  return { ...defaults, ...(input ?? {}) };
+function normalizeParams(input: Partial<Params> | undefined, controls: ControlSpec[]): Params {
+  const params = defaultParams(controls);
+  if (!input) return params;
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined) params[key] = value;
+  }
+  return params;
 }
 
 function benchmarkResidual(labId: string, samples: SamplePoint[]) {

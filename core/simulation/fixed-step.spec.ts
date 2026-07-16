@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSimLoopState, stepFixedSimulation } from "./sim-loop";
+import { createSimLoopState, stepFixedSimulation } from "./fixed-step";
 
 type OscState = { x: number; v: number };
 
@@ -20,7 +20,7 @@ function runSequence(frameDts: number[]) {
         const a = -k * sim.x;
         sim.v += a * dt;
         sim.x += sim.v * dt;
-      }
+      },
     );
     loop = result.state;
   }
@@ -64,7 +64,7 @@ describe("stepFixedSimulation", () => {
       },
       (dt) => {
         integrated += dt;
-      }
+      },
     );
     loop = result.state;
 

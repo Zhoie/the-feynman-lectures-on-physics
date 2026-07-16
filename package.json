@@ -2,30 +2,41 @@
   "name": "the-feynman-lectures-on-physics",
   "version": "0.1.1",
   "private": true,
+  "packageManager": "npm@10.9.8",
+  "engines": {
+    "node": ">=22.22.0 <23",
+    "npm": ">=10.9.0 <11"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run --maxWorkers=4",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "verify:build": "node scripts/verify-build.mjs",
+    "security": "npm audit --omit=dev --audit-level=high",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run verify:build && npm run test:e2e"
   },
   "dependencies": {
-    "framer-motion": "^11.12.0",
-    "next": "16.1.6",
+    "next": "16.2.10",
     "planck": "^1.4.2",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "vitest": "^1.6.0",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^20.19.43",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5",
+    "vitest": "4.1.10"
   }
 }

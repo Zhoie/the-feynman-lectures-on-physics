@@ -1,8 +1,9 @@
 import type { ComponentType } from "react";
+import type { RegisteredLabId } from "./registered-lab-ids";
 
-type LabLoader = () => Promise<{ default: ComponentType }>;
+export type LabLoader = () => Promise<{ default: ComponentType }>;
 
-const registry: Record<string, LabLoader> = {
+export const labViewLoaders = {
   "v1-ch01-s01-introduction": () =>
     import("@/labs/v1-ch01-s01-introduction/view"),
   "v1-ch01-s02-matter-is-made-of-atoms": () =>
@@ -59,17 +60,14 @@ const registry: Record<string, LabLoader> = {
     import("@/labs/v3-ch12-s05-the-states-in-a-magnetic-field/view"),
   "v3-ch12-s06-the-projection-matrix-for-spin-one6": () =>
     import("@/labs/v3-ch12-s06-the-projection-matrix-for-spin-one6/view"),
-};
+} satisfies Record<RegisteredLabId, LabLoader>;
 
-export const labIds = Object.keys(registry);
-
-export function hasLab(labId: string) {
-  return Object.prototype.hasOwnProperty.call(registry, labId);
+export async function loadLabView(labId: RegisteredLabId) {
+  const loader = labViewLoaders[labId];
+  const labModule = await loader();
+  return labModule.default;
 }
 
-export async function loadLabView(labId: string) {
-  const loader = registry[labId];
-  if (!loader) return null;
-  const module = await loader();
-  return module.default;
+export function preloadLabView(labId: RegisteredLabId) {
+  return labViewLoaders[labId]();
 }

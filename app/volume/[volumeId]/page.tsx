@@ -1,30 +1,27 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import Link from "next/link";
-import type { CSSProperties } from "react";
 import { volumes } from "@/features/lectures/data";
-import { ChapterGrid } from "@/features/lectures/ui/chapter-grid";
 import { VolumeHero } from "@/features/lectures/ui/volume-hero";
 import { VolumeNav } from "@/features/lectures/ui/volume-nav";
-import { VolumeSearch } from "@/features/lectures/ui/volume-search";
-import { ShareBar } from "@/features/lectures/ui/share-bar";
-import { volumeIdSchema, volumeSearchParamsSchema } from "@/features/lectures/schemas";
+import { VolumeBrowser } from "@/features/lectures/ui/volume-search";
+import { volumeIdSchema } from "@/features/lectures/schemas";
 import { getVolumeById, getVolumeNavigation } from "@/features/lectures/lib/lectures";
 
 export function generateStaticParams() {
   return volumes.map((volume) => ({ volumeId: volume.id }));
 }
 
-type PageParams = { volumeId: string };
+export const dynamicParams = false;
 
-type PageSearchParams = { [key: string]: string | string[] | undefined };
+type PageParams = { volumeId: string };
 
 export async function generateMetadata({
   params,
 }: {
-  params: PageParams;
+  params: PageParams | Promise<PageParams>;
 }): Promise<Metadata> {
-  const parsed = volumeIdSchema.safeParse(params);
+  const resolvedParams = await params;
+  const parsed = volumeIdSchema.safeParse(resolvedParams);
   if (!parsed.success) {
     return {};
   }
@@ -45,6 +42,9 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: {
+      canonical: `/volume/${volume.id}`,
+    },
     openGraph: {
       title,
       description,
@@ -63,10 +63,8 @@ export async function generateMetadata({
 
 export default async function VolumePage({
   params,
-  searchParams,
 }: {
   params: PageParams | Promise<PageParams>;
-  searchParams?: PageSearchParams | Promise<PageSearchParams>;
 }) {
   const resolvedParams = await params;
   const parsed = volumeIdSchema.safeParse(resolvedParams);
@@ -79,74 +77,16 @@ export default async function VolumePage({
     notFound();
   }
 
-  const resolvedSearchParams = await searchParams;
-  const searchResult = volumeSearchParamsSchema.safeParse(
-    resolvedSearchParams ?? {}
-  );
-  const query = searchResult.success && searchResult.data.q
-    ? searchResult.data.q
-    : "";
-  const normalizedQuery = query.toLowerCase();
-  const chapters = normalizedQuery
-    ? volume.chapters.filter((chapter) =>
-        `${chapter.label} ${chapter.title}`
-          .toLowerCase()
-          .includes(normalizedQuery)
-      )
-    : volume.chapters;
   const navigation = getVolumeNavigation(volume.id);
-  const firstChapter = volume.chapters[0];
 
   return (
     <main id="main-content" className="min-h-screen">
       <VolumeHero volume={volume} />
-      <section
-        className="mx-auto flex max-w-6xl flex-col gap-6 px-6 pb-8"
-        style={{ "--accent": volume.accent } as CSSProperties}
-      >
-        <div className="rounded-3xl border border-slate-900/10 bg-white/80 p-6 shadow-sm backdrop-blur">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.3em] text-slate-500">
-              <span className="rounded-full border border-slate-900/10 px-4 py-2">
-                {volume.chapters.length} Chapters
-              </span>
-              {firstChapter ? (
-                <Link
-                  href={`/volume/${volume.id}/${firstChapter.slug}`}
-                  className="rounded-full border border-[color:var(--accent)] bg-white/80 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.28em] text-[color:var(--accent)] shadow-sm transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] sm:text-xs"
-                >
-                  Start with {firstChapter.label}
-                </Link>
-              ) : null}
-            </div>
-            <ShareBar label="Share volume" />
-          </div>
-          <div className="mt-6">
-            <VolumeSearch
-              initialQuery={query}
-              resultsCount={chapters.length}
-              totalCount={volume.chapters.length}
-            />
-          </div>
-        </div>
-      </section>
-      <ChapterGrid
+      <VolumeBrowser
         volumeId={volume.id}
-        chapters={chapters}
+        chapters={volume.chapters}
         accent={volume.accent}
       />
-      {chapters.length === 0 ? (
-        <section className="mx-auto max-w-6xl px-6 pb-12">
-          <div
-            role="status"
-            aria-live="polite"
-            className="rounded-2xl border border-dashed border-slate-900/20 bg-white/70 p-6 text-sm text-slate-500"
-          >
-            No chapters match “{query}”. Try a different phrase or remove the
-            filter.
-          </div>
-        </section>
-      ) : null}
       <VolumeNav
         previous={navigation?.previous ?? null}
         next={navigation?.next ?? null}

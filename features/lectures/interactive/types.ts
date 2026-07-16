@@ -4,6 +4,8 @@ export const moduleTypes = [
   "vector-field",
   "rigid-body",
   "random-walk",
+  "phase-exchange",
+  "reaction-coordinate",
   "phase-space",
   "circuit-response",
   "quantum-amplitude",

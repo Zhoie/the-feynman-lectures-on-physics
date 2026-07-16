@@ -1,20 +1,10 @@
-"use client";
-
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 
 export function HomeHero({ primaryHref }: { primaryHref: string }) {
-  const reduceMotion = useReducedMotion();
-
   return (
     <section className="mx-auto flex max-w-6xl flex-col gap-10 px-6 pb-10 pt-16 md:pb-16 md:pt-24">
-      <motion.div
-        initial={{ opacity: 0, y: reduceMotion ? 0 : 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="flex flex-col gap-6"
-      >
-        <div className="inline-flex items-center gap-3 text-xs uppercase tracking-[0.4em] text-slate-600">
+      <div className="ui-reveal flex flex-col gap-6">
+        <div className="inline-flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
           <span className="h-[1px] w-12 bg-slate-400/70" />
           Interactive Atlas
         </div>
@@ -26,26 +16,21 @@ export function HomeHero({ primaryHref }: { primaryHref: string }) {
           handoffs between them. Designed for quick orientation, modern
           readability, and motion-guided focus.
         </p>
-      </motion.div>
-      <motion.div
-        initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
-        className="flex flex-wrap gap-4"
-      >
+      </div>
+      <div className="ui-reveal ui-reveal-delay flex flex-wrap gap-4">
         <Link
           href={primaryHref}
-          className="group inline-flex items-center gap-3 rounded-full border border-slate-900/10 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm backdrop-blur transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-slate-900/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]"
+          className="group inline-flex items-center gap-3 rounded-full border border-slate-900/10 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-slate-900/30 hover:shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]"
         >
           Start with Volume I
           <span className="text-slate-500 transition duration-200 group-hover:translate-x-1 group-focus-visible:translate-x-1">
             →
           </span>
         </Link>
-        <div className="rounded-full border border-slate-900/10 px-5 py-3 text-xs uppercase tracking-[0.35em] text-slate-500">
+        <div className="rounded-full border border-slate-900/10 px-5 py-3 text-sm font-medium text-slate-500">
           3 Volumes · 114 Chapters
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 }

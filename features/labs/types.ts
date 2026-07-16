@@ -1,4 +1,7 @@
-export type ControlOption = {
+import type { CanvasSize } from "@/core/canvas/runtime";
+import type { SimulationConfig } from "@/core/simulation/fixed-step";
+
+type ControlOption = {
   label: string;
   value: number;
 };
@@ -64,18 +67,6 @@ export type ChartSpec = {
   yRange?: [number, number];
 };
 
-export type CanvasSize = {
-  width: number;
-  height: number;
-  dpr: number;
-};
-
-export type SimulationConfig = {
-  fixedDt: number;
-  maxSubSteps: number;
-  maxFrameDt?: number;
-};
-
 export type ModelSource = {
   label: string;
   url: string;
@@ -112,18 +103,20 @@ export type LabModel<P extends Record<string, number>, S> = {
   title: string;
   summary: string;
   archetype: string;
+  animated?: boolean;
   simulation?: SimulationConfig;
+  snapshotInterval?: number;
   meta?: ModelMeta;
   params: ControlSpec[];
-  create: (params: P) => S;
-  step: (state: S, params: P, dt: number) => void;
-  draw: (
+  create(params: P): S;
+  step(state: S, params: P, dt: number): void;
+  draw(
     ctx: CanvasRenderingContext2D,
     state: S,
     params: P,
     size: CanvasSize
-  ) => void;
-  metrics: (state: S, params: P) => MetricValue[];
-  charts?: (state: S, params: P) => ChartSpec[];
-  validate?: (state: S, params: P) => ValidationResult;
+  ): void;
+  metrics(state: S, params: P): MetricValue[];
+  charts?(state: S, params: P): ChartSpec[];
+  validate?(state: S, params: P): ValidationResult;
 };

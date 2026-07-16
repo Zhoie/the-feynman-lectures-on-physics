@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { setupCanvas, useCanvasSize } from "../core/canvas";
-
-type RandomWalkParams = {
-  count: number;
-  step: number;
-  drift: number;
-  spread: number;
-};
-
-type Walker = { x: number; y: number };
+import { useCanvasAnimation, useCanvasSize } from "@/core/canvas/runtime";
+import { useLazyRef } from "@/core/react/use-lazy-ref";
+import {
+  createRandomWalkState,
+  stepRandomWalk,
+  type RandomWalkParams,
+  type RandomWalkState,
+} from "../models/random-walk";
+import {
+  createSimLoopState,
+  stepFixedSimulation,
+} from "@/core/simulation/fixed-step";
 
 export function RandomWalkModule({
   params,
@@ -21,35 +23,33 @@ export function RandomWalkModule({
     height: 320,
     compactHeight: 250,
   });
-  const walkersRef = useRef<Walker[]>([]);
+  const stateRef = useRef<RandomWalkState | null>(null);
+  const loopStateRef = useLazyRef(createSimLoopState);
 
   useEffect(() => {
     const p = params as RandomWalkParams;
     const density = width > 0 && width < 520 ? 0.6 : 1;
     const count = Math.max(20, Math.round(p.count * density));
-    walkersRef.current = Array.from({ length: count }, () => ({
-      x: (Math.random() - 0.5) * p.spread,
-      y: (Math.random() - 0.5) * p.spread,
-    }));
-  }, [params, width]);
+    stateRef.current = createRandomWalkState(count, p.spread);
+    loopStateRef.current = createSimLoopState();
+  }, [loopStateRef, params, width]);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || width === 0) return;
-    const ctx = setupCanvas(canvas, width, height, dpr);
-    if (!ctx) return;
-
-    let raf = 0;
-    const draw = () => {
+  useCanvasAnimation({
+    canvasRef,
+    width,
+    height,
+    dpr,
+    draw: (ctx, frame) => {
       const p = params as RandomWalkParams;
-      const step = p.step;
-      const drift = p.drift;
-
-      const walkers = walkersRef.current;
-      walkers.forEach((walker) => {
-        walker.x += (Math.random() - 0.5) * step + drift;
-        walker.y += (Math.random() - 0.5) * step;
-      });
+      const state = stateRef.current;
+      if (!state) return;
+      const result = stepFixedSimulation(
+        loopStateRef.current,
+        frame.delta,
+        { fixedDt: 1 / 60, maxSubSteps: 8, maxFrameDt: 1 / 12 },
+        (dt) => stepRandomWalk(state, p, dt)
+      );
+      loopStateRef.current = result.state;
 
       ctx.clearRect(0, 0, width, height);
       ctx.fillStyle = "rgba(255,255,255,0.6)";
@@ -60,26 +60,25 @@ export function RandomWalkModule({
       const scale = Math.min(width, height) * 0.35;
 
       ctx.fillStyle = "rgba(15,23,42,0.65)";
-      walkers.forEach((walker) => {
+      state.walkers.forEach((walker) => {
         const x = centerX + walker.x * scale;
         const y = centerY + walker.y * scale;
         ctx.beginPath();
         ctx.arc(x, y, 2, 0, Math.PI * 2);
         ctx.fill();
       });
-
-      raf = requestAnimationFrame(draw);
-    };
-
-    raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
-  }, [canvasRef, width, height, dpr, params]);
+    },
+  });
 
   return (
     <canvas
       ref={canvasRef}
       style={{ height, touchAction: "none" }}
-      className="w-full rounded-2xl border border-slate-900/10 bg-white/60 shadow-sm"
-    />
+      className="w-full rounded-2xl border border-slate-900/10 bg-white/60"
+      role="img"
+      aria-label="Particles following a deterministic random walk"
+    >
+      Random-walk particle simulation.
+    </canvas>
   );
 }

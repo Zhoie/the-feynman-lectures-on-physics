@@ -272,6 +272,7 @@ export const model: LabModel<Params, State> = {
   summary:
     "Compares classical and relativistic momentum using c = 299,792,458 m/s. The UI reports SI momentum, beta, low-beta approximation, and dataset residuals.",
   archetype: "Relativistic Momentum",
+  animated: false,
   simulation: {
     fixedDt: 1 / 120,
     maxSubSteps: 4,

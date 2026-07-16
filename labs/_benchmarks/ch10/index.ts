@@ -4,7 +4,7 @@ import s03 from "./s03-recoil.json";
 import s04 from "./s04-energy-loss.json";
 import s05 from "./s05-relativistic-momentum.json";
 
-export type BenchmarkSamplingMeta = {
+type BenchmarkSamplingMeta = {
   xStart: number;
   xEnd: number;
   nominalStep?: number;

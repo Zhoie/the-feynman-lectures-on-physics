@@ -180,6 +180,76 @@ const randomWalk: ModuleConfig = {
   ],
 };
 
+const phaseExchange: ModuleConfig = {
+  type: "phase-exchange",
+  title: "Phase Exchange",
+  description:
+    "Particles leave, return, and dissolve at rates set by temperature, humidity, and concentration.",
+  params: {
+    temperature: 0.8,
+    humidity: 0.3,
+    salt: 0.2,
+  },
+  paramMeta: [
+    { id: "temperature", label: "Temperature", min: 0.2, max: 2, step: 0.05 },
+    { id: "humidity", label: "Humidity", min: 0.05, max: 0.8, step: 0.05 },
+    { id: "salt", label: "Dissolved Salt", min: 0, max: 0.9, step: 0.05 },
+  ],
+  presets: [
+    {
+      id: "balanced",
+      label: "Balanced",
+      params: { temperature: 0.8, humidity: 0.3, salt: 0.2 },
+    },
+    {
+      id: "evaporating",
+      label: "Evaporating",
+      params: { temperature: 1.6, humidity: 0.15, salt: 0.25 },
+    },
+    {
+      id: "condensing",
+      label: "Condensing",
+      params: { temperature: 0.5, humidity: 0.7, salt: 0.1 },
+    },
+  ],
+};
+
+const reactionCoordinate: ModuleConfig = {
+  type: "reaction-coordinate",
+  title: "Reaction Coordinate",
+  description:
+    "Particles cross an energy barrier more often when temperature rises or a catalyst lowers the hill.",
+  params: {
+    barrier: 1.6,
+    reactionEnergy: -0.2,
+    temperature: 0.6,
+    catalyst: 0,
+  },
+  paramMeta: [
+    { id: "barrier", label: "Base Barrier", min: 0.4, max: 4, step: 0.1 },
+    { id: "reactionEnergy", label: "Reaction Energy", min: -1, max: 1, step: 0.05 },
+    { id: "temperature", label: "Temperature", min: 0.1, max: 2, step: 0.05 },
+    { id: "catalyst", label: "Catalyst", min: 0, max: 1, step: 1 },
+  ],
+  presets: [
+    {
+      id: "uncatalyzed",
+      label: "Uncatalyzed",
+      params: { barrier: 1.6, reactionEnergy: -0.2, temperature: 0.6, catalyst: 0 },
+    },
+    {
+      id: "hot",
+      label: "Hot",
+      params: { barrier: 1.6, reactionEnergy: -0.2, temperature: 1.4, catalyst: 0 },
+    },
+    {
+      id: "catalyzed",
+      label: "Catalyzed",
+      params: { barrier: 1.6, reactionEnergy: -0.2, temperature: 0.6, catalyst: 1 },
+    },
+  ],
+};
+
 const phaseSpace: ModuleConfig = {
   type: "phase-space",
   title: "Phase Space",
@@ -328,13 +398,15 @@ const templates: Record<ModuleType, ModuleConfig> = {
   "vector-field": vectorField,
   "rigid-body": rigidBody,
   "random-walk": randomWalk,
+  "phase-exchange": phaseExchange,
+  "reaction-coordinate": reactionCoordinate,
   "phase-space": phaseSpace,
   "circuit-response": circuitResponse,
   "quantum-amplitude": quantumAmplitude,
   "spacetime": spacetime,
 };
 
-const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+const clone = <T,>(value: T): T => structuredClone(value);
 
 export function createModuleConfig(
   type: ModuleType,

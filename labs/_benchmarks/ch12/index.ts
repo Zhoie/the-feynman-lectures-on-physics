@@ -18,7 +18,7 @@ import p17 from "./v3-ch12-s04-the-zeeman-splitting.json";
 import p18 from "./v3-ch12-s05-the-states-in-a-magnetic-field.json";
 import p19 from "./v3-ch12-s06-the-projection-matrix-for-spin-one6.json";
 
-export type BenchmarkSamplingMeta = {
+type BenchmarkSamplingMeta = {
   xStart: number;
   xEnd: number;
   nominalStep?: number;
@@ -62,10 +62,6 @@ const profiles: Record<string, BenchmarkProfile> = {
 
 export function getCh12BenchmarkProfile(id: keyof typeof profiles | string) {
   return profiles[id];
-}
-
-export function allCh12BenchmarkProfiles() {
-  return Object.values(profiles);
 }
 
 export function validateBenchmarkProfile(profile: BenchmarkProfile) {

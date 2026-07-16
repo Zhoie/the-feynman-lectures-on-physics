@@ -1,7 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import type { CSSProperties } from "react";
 import type { Chapter, Volume } from "../data";
 
@@ -14,8 +11,6 @@ export function TransitionPanel({
   from: Chapter;
   to: Chapter;
 }) {
-  const reduceMotion = useReducedMotion();
-
   return (
     <section
       className="mx-auto flex max-w-5xl flex-col gap-10 px-6 pb-20 pt-16 md:pt-24"
@@ -33,14 +28,9 @@ export function TransitionPanel({
           prime the questions for the next.
         </p>
       </div>
-      <div className="rounded-3xl border border-slate-900/10 bg-white/85 p-8 shadow-sm backdrop-blur">
+      <div className="rounded-3xl border border-slate-900/10 bg-white/85 p-6 sm:p-8">
         <div className="flex flex-col gap-6">
-          <motion.div
-            initial={{ opacity: 0, scaleX: reduceMotion ? 1 : 0 }}
-            animate={{ opacity: 1, scaleX: 1 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="h-[2px] w-full origin-left bg-gradient-to-r from-transparent via-[color:var(--accent)] to-transparent"
-          />
+          <div className="ui-reveal-line h-[2px] w-full origin-left bg-gradient-to-r from-transparent via-[color:var(--accent)] to-transparent" />
           <div className="grid gap-6 md:grid-cols-2">
             <div className="rounded-2xl border border-slate-900/10 bg-slate-50/70 p-5">
               <div className="text-xs uppercase tracking-[0.3em] text-slate-500">
@@ -76,7 +66,7 @@ export function TransitionPanel({
             </Link>
             <Link
               href={`/volume/${volume.id}/${to.slug}`}
-              className="rounded-full border border-[color:var(--accent)] bg-white/80 px-5 py-3 text-center text-[11px] uppercase tracking-[0.28em] text-[color:var(--accent)] shadow-sm transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] sm:text-xs sm:whitespace-nowrap"
+              className="rounded-full border border-[color:var(--accent)] bg-white/80 px-5 py-3 text-center text-[11px] uppercase tracking-[0.28em] text-[color:var(--accent)] transition duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] sm:text-xs sm:whitespace-nowrap"
             >
               Enter {to.label}
             </Link>

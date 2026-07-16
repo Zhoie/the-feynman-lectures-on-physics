@@ -187,9 +187,12 @@ function stepState(state: State, input: Partial<Params>, dt: number) {
 function datasetResidual(state: State) {
   const profile = getCh10BenchmarkProfile(DATASET_ID);
   if (!profile) return 0;
-  const sim = state.history
-    .filter((point) => point.t >= 0.1 && point.t <= 0.5)
-    .map((point) => ({ x: point.t, y: point.drift }));
+  const sim: Array<{ x: number; y: number }> = [];
+  for (const point of state.history) {
+    if (point.t >= 0.1 && point.t <= 0.5) {
+      sim.push({ x: point.t, y: point.drift });
+    }
+  }
   return seriesRmsResidual(sim, benchmarkSeries(profile));
 }
 

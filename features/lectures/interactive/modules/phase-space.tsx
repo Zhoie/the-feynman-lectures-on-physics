@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { setupCanvas, useCanvasSize } from "../core/canvas";
+import { useCanvasAnimation, useCanvasSize } from "@/core/canvas/runtime";
+import { useLazyRef } from "@/core/react/use-lazy-ref";
+import {
+  createSimLoopState,
+  stepFixedSimulation,
+} from "@/core/simulation/fixed-step";
 
 type PhaseParams = {
   frequency: number;
@@ -32,24 +37,19 @@ export function PhaseSpaceModule({
     t: 0,
     trail: [],
   });
+  const loopStateRef = useLazyRef(createSimLoopState);
 
   useEffect(() => {
     stateRef.current = { x: 1, v: 0, t: 0, trail: [] };
-  }, [params]);
+    loopStateRef.current = createSimLoopState();
+  }, [loopStateRef, params]);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || width === 0) return;
-    const ctx = setupCanvas(canvas, width, height, dpr);
-    if (!ctx) return;
-
-    let raf = 0;
-    let last = performance.now();
-
-    const draw = (time: number) => {
-      const dt = Math.min(0.02, (time - last) / 1000);
-      last = time;
-
+  useCanvasAnimation({
+    canvasRef,
+    width,
+    height,
+    dpr,
+    draw: (ctx, frame) => {
       const p = params as PhaseParams;
       const omega = p.frequency;
       const zeta = p.damping;
@@ -57,17 +57,23 @@ export function PhaseSpaceModule({
       const phase = p.phase;
 
       const state = stateRef.current;
-      for (let i = 0; i < 3; i += 1) {
-        const a =
-          -2 * zeta * omega * state.v -
-          omega * omega * state.x +
-          drive * Math.sin(omega * state.t + phase);
-        state.v += a * dt;
-        state.x += state.v * dt;
-        state.t += dt;
-        state.trail.push({ x: state.x, v: state.v });
-        if (state.trail.length > 180) state.trail.shift();
-      }
+      const result = stepFixedSimulation(
+        loopStateRef.current,
+        frame.delta,
+        { fixedDt: 1 / 120, maxSubSteps: 16, maxFrameDt: 1 / 12 },
+        (dt) => {
+          const acceleration =
+            -2 * zeta * omega * state.v -
+            omega * omega * state.x +
+            drive * Math.sin(omega * state.t + phase);
+          state.v += acceleration * dt;
+          state.x += state.v * dt;
+          state.t += dt;
+          state.trail.push({ x: state.x, v: state.v });
+          if (state.trail.length > 240) state.trail.shift();
+        }
+      );
+      loopStateRef.current = result.state;
 
       ctx.clearRect(0, 0, width, height);
       ctx.fillStyle = "rgba(255,255,255,0.6)";
@@ -95,19 +101,18 @@ export function PhaseSpaceModule({
         else ctx.lineTo(x, y);
       });
       ctx.stroke();
-
-      raf = requestAnimationFrame(draw);
-    };
-
-    raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
-  }, [canvasRef, width, height, dpr, params]);
+    },
+  });
 
   return (
     <canvas
       ref={canvasRef}
       style={{ height, touchAction: "none" }}
-      className="w-full rounded-2xl border border-slate-900/10 bg-white/60 shadow-sm"
-    />
+      className="w-full rounded-2xl border border-slate-900/10 bg-white/60"
+      role="img"
+      aria-label="Oscillator position plotted against velocity"
+    >
+      Oscillator phase-space simulation.
+    </canvas>
   );
 }

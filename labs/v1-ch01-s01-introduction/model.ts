@@ -203,6 +203,7 @@ export const model: LabModel<Params, State> = {
   summary:
     "Fit a constant-mass law against a relativistic law. Switch between formula and data truth benchmarks, then compare residual bands.",
   archetype: "Law Fit",
+  animated: false,
   simulation: {
     fixedDt: 1 / 120,
     maxSubSteps: 4,

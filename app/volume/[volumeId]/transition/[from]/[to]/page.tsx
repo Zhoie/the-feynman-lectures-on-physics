@@ -9,14 +9,17 @@ export function generateStaticParams() {
   return getAllTransitionParams();
 }
 
+export const dynamicParams = false;
+
 type PageParams = { volumeId: string; from: string; to: string };
 
 export async function generateMetadata({
   params,
 }: {
-  params: PageParams;
+  params: PageParams | Promise<PageParams>;
 }): Promise<Metadata> {
-  const parsed = transitionParamsSchema.safeParse(params);
+  const resolvedParams = await params;
+  const parsed = transitionParamsSchema.safeParse(resolvedParams);
   if (!parsed.success) {
     return {};
   }
@@ -42,6 +45,9 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: {
+      canonical: `/volume/${transition.volume.id}/transition/${transition.from.slug}/${transition.to.slug}`,
+    },
     openGraph: {
       title,
       description,
