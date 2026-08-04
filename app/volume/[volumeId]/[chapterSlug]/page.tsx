@@ -33,7 +33,7 @@ type PageParams = { volumeId: string; chapterSlug: string };
 export async function generateMetadata({
   params,
 }: {
-  params: PageParams | Promise<PageParams>;
+  params: Promise<PageParams>;
 }): Promise<Metadata> {
   const resolvedParams = await params;
   const volumeResult = volumeIdSchema.safeParse(resolvedParams);
@@ -86,7 +86,7 @@ export async function generateMetadata({
 export default async function ChapterPage({
   params,
 }: {
-  params: PageParams | Promise<PageParams>;
+  params: Promise<PageParams>;
 }) {
   const resolvedParams = await params;
   const volumeResult = volumeIdSchema.safeParse(resolvedParams);

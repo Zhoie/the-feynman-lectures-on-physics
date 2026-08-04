@@ -48,7 +48,7 @@ async function routeJavaScriptBytes(html) {
       .filter((match) => !`${match[1]}${match[3]}`.includes("noModule"))
       .map((match) => match[2])
       .filter((source) => source.startsWith("/_next/"))
-      .map((source) => source.replace("/_next/", "")),
+      .map((source) => decodeURIComponent(source.replace("/_next/", ""))),
   );
 
   let total = 0;

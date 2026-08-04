@@ -19,7 +19,7 @@ export function generateStaticParams(): PageParams[] {
 export async function generateMetadata({
   params,
 }: {
-  params: PageParams | Promise<PageParams>;
+  params: Promise<PageParams>;
 }): Promise<Metadata> {
   const resolvedParams = await params;
   if (!isRegisteredLabId(resolvedParams.labId)) return {};
@@ -59,7 +59,7 @@ export async function generateMetadata({
 export default async function LabPage({
   params,
 }: {
-  params: PageParams | Promise<PageParams>;
+  params: Promise<PageParams>;
 }) {
   const resolvedParams = await params;
   if (!isRegisteredLabId(resolvedParams.labId)) notFound();

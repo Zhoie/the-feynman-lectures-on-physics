@@ -16,7 +16,7 @@ type PageParams = { volumeId: string; from: string; to: string };
 export async function generateMetadata({
   params,
 }: {
-  params: PageParams | Promise<PageParams>;
+  params: Promise<PageParams>;
 }): Promise<Metadata> {
   const resolvedParams = await params;
   const parsed = transitionParamsSchema.safeParse(resolvedParams);
@@ -67,7 +67,7 @@ export async function generateMetadata({
 export default async function TransitionPage({
   params,
 }: {
-  params: PageParams | Promise<PageParams>;
+  params: Promise<PageParams>;
 }) {
   const resolvedParams = await params;
   const parsed = transitionParamsSchema.safeParse(resolvedParams);
