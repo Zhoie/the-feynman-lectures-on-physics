@@ -17,10 +17,12 @@
     "typecheck": "tsc --noEmit",
     "verify:build": "node scripts/verify-build.mjs",
     "security": "npm audit --omit=dev --audit-level=high",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run verify:build && npm run test:e2e"
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run verify:build && npm run test:e2e",
+    "test:security": "node --test scripts/test-braces-security.mjs",
+    "prebuild": "node --test scripts/test-braces-security.mjs"
   },
   "dependencies": {
-    "next": "16.3.0",
+    "next": "16.4.2",
     "planck": "^1.4.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -34,9 +36,13 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "eslint": "^9.39.5",
-    "eslint-config-next": "16.3.0",
+    "eslint-config-next": "16.4.2",
     "tailwindcss": "^4.3.3",
     "typescript": "^5",
-    "vitest": "4.1.10"
+    "vitest": "4.1.12",
+    "braces": "file:./vendor/braces-security/braces-security.tgz"
+  },
+  "overrides": {
+    "braces": "$braces"
   }
 }
